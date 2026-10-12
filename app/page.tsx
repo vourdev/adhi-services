@@ -20,7 +20,8 @@ export default async function Home(): Promise<ReactNode> {
       <p className="text-muted-foreground">
         {profile
           ? "Profil sedang tidak dipublikasikan."
-          : "Belum ada akun pemilik. Jalankan npm run setup untuk membuat akun dan profil."}
+          : // On Vercel the account is created from the owner's computer against the live database (README "Deploying").
+            `Belum ada akun pemilik. Jalankan ${process.env.VERCEL ? "npm run setup:production" : "npm run setup"} dari folder project untuk membuat akun dan profil.`}
       </p>
       <Link
         href="/admin"
