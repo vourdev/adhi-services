@@ -1,0 +1,316 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Two token sets share this file:
+ *
+ * 1. shadcn tokens (background, card, primary, ...) for the admin
+ *    dashboard, matching the reference dashboard. Dark mode via .dark.
+ * 2. Profile tokens (p-*) for public profile, product, checkout and order
+ *    pages, driven by the profile's theme and accent settings.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  /* Profile */
+  --color-p-bg: var(--p-bg);
+  --color-p-card: var(--p-card);
+  --color-p-card-hover: var(--p-card-hover);
+  --color-p-line: var(--p-line);
+  --color-p-fg: var(--p-fg);
+  --color-p-muted: var(--p-muted);
+  --color-p-accent: var(--p-accent);
+  --color-p-accent-fg: var(--p-accent-fg);
+  --color-p-accent-soft: var(--p-accent-soft);
+  --color-p-price: var(--p-price);
+  --color-p-sale: var(--p-sale);
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------ shadcn */
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.52 0.13 155);
+  --warning: oklch(0.6 0.13 70);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  /* Categorical series, fixed order (blue, orange, aqua, yellow, magenta); validated for CVD separation and 3:1 contrast on the card surface. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.75 0.14 155);
+  --warning: oklch(0.8 0.13 80);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ----------------------------------------------------------- profile */
+
+/* Public pages: light grey page, white cards, prices and buttons in the profile's accent. */
+.profile-surface {
+  --p-bg: #f1f3f6;
+  --p-card: #ffffff;
+  --p-card-hover: #f7f8fa;
+  --p-line: #e3e6eb;
+  --p-fg: #111827;
+  --p-muted: #5b6474;
+  --p-accent: var(--accent-light);
+  --p-accent-fg: var(--accent-fg-light);
+  --p-accent-soft: color-mix(in oklab, var(--accent-light) 10%, #ffffff);
+  --p-price: var(--accent-light);
+  --p-sale: #d03b3b;
+  background-color: var(--p-bg);
+  color: var(--p-fg);
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-surface[data-theme="dark"] {
+  --p-bg: #0d1016;
+  --p-card: #171b23;
+  --p-card-hover: #1d222c;
+  --p-line: #272d38;
+  --p-fg: #eef0f3;
+  --p-muted: #9ba4b3;
+  --p-accent: var(--accent-dark);
+  --p-accent-fg: var(--accent-fg-dark);
+  --p-accent-soft: color-mix(in oklab, var(--accent-dark) 14%, #171b23);
+  --p-price: var(--accent-dark);
+  --p-sale: #d03b3b;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .profile-surface[data-theme="system"] {
+    --p-bg: #0d1016;
+    --p-card: #171b23;
+    --p-card-hover: #1d222c;
+    --p-line: #272d38;
+    --p-fg: #eef0f3;
+    --p-muted: #9ba4b3;
+    --p-accent: var(--accent-dark);
+    --p-accent-fg: var(--accent-fg-dark);
+    --p-accent-soft: color-mix(in oklab, var(--accent-dark) 14%, #171b23);
+    --p-price: var(--accent-dark);
+    --p-sale: #d03b3b;
+    color-scheme: dark;
+  }
+}
+
+.profile-surface ::selection {
+  background-color: var(--p-accent);
+  color: var(--p-accent-fg);
+}
+
+/* Accent presets. Every pair below passes WCAG AA as button text and as text on the page. */
+[data-accent="blue"] {
+  --accent-light: #1d4fd8;
+  --accent-fg-light: #ffffff;
+  --accent-dark: #8fb0ff;
+  --accent-fg-dark: #0b1220;
+}
+[data-accent="emerald"] {
+  --accent-light: #047857;
+  --accent-fg-light: #ffffff;
+  --accent-dark: #34d399;
+  --accent-fg-dark: #04221a;
+}
+[data-accent="rose"] {
+  --accent-light: #be123c;
+  --accent-fg-light: #ffffff;
+  --accent-dark: #fb7185;
+  --accent-fg-dark: #2b0610;
+}
+[data-accent="amber"] {
+  --accent-light: #9c4508;
+  --accent-fg-light: #ffffff;
+  --accent-dark: #fbbf24;
+  --accent-fg-dark: #2a1a02;
+}
+[data-accent="violet"] {
+  --accent-light: #6d28d9;
+  --accent-fg-light: #ffffff;
+  --accent-dark: #a78bfa;
+  --accent-fg-dark: #1a0b3d;
+}
+[data-accent="slate"] {
+  --accent-light: #0f172a;
+  --accent-fg-light: #ffffff;
+  --accent-dark: #e2e8f0;
+  --accent-fg-dark: #0f172a;
+}
+
+.profile-surface :focus-visible {
+  outline: 2px solid var(--p-accent);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------ shared */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+  }
+
+  /*
+   * The page canvas (what overscroll and rubber-banding reveal) takes the
+   * colour around the content, so it never flashes white.
+   * Dashboard: the sidebar colour, which follows the light/dark toggle.
+   */
+  html:has([data-slot="sidebar-wrapper"]) {
+    background-color: var(--sidebar);
+  }
+
+  /* Public pages: the profile theme's page colour (mirrors --p-bg below). */
+  html:has([data-page-surface]) {
+    background-color: #f1f3f6;
+  }
+  html:has([data-page-surface][data-theme="dark"]) {
+    background-color: #0d1016;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:has([data-page-surface][data-theme="system"]) {
+      background-color: #0d1016;
+      color-scheme: dark;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}

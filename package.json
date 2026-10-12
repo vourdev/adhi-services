@@ -1,0 +1,63 @@
+{
+  "name": "adhi-web-services",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "setup": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --disable-warning=ExperimentalWarning --env-file-if-exists=.env.local --import ./scripts/register.mjs scripts/setup.ts",
+    "db:migrate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --disable-warning=ExperimentalWarning --env-file-if-exists=.env.local --import ./scripts/register.mjs scripts/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "admin:password": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --disable-warning=ExperimentalWarning --env-file-if-exists=.env.local --import ./scripts/register.mjs scripts/reset-password.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --disable-warning=ExperimentalWarning --import ./scripts/register.mjs --test \"tests/**/*.test.mjs\" \"tests/**/*.test.ts\"",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,md}\""
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react": "^1.1.10",
+    "@libsql/client": "^0.18.0",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.4",
+    "lucide-react": "^1.55.0",
+    "next": "16.4.0",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.7.0",
+    "react": "19.3.0",
+    "react-day-picker": "^10.0.2",
+    "react-dom": "19.3.0",
+    "react-hook-form": "^7.89.0",
+    "recharts": "^3.10.1",
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.5",
+    "sonner": "^2.0.8",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "shadcn": "^4.21.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

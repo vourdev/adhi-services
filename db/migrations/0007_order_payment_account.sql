@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `payment_account` text DEFAULT 'platform' NOT NULL;

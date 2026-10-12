@@ -1,0 +1,1 @@
+ALTER TABLE `profile_links` ADD `message` text;

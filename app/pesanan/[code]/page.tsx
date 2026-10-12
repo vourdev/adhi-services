@@ -1,0 +1,275 @@
+import {
+  Alert02Icon,
+  CheckmarkCircle02Icon,
+  Clock01Icon,
+  Download04Icon,
+  WhatsappIcon,
+} from "@hugeicons/core-free-icons";
+import { eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+
+import { Icon } from "@/components/profile/icon";
+import { ProfileSurface } from "@/components/profile/profile-view";
+import { getDb } from "@/db/client";
+import { digitalDeliveries, paymentTransactions, profiles } from "@/db/schema";
+import { ORDER_STATUS_LABELS } from "@/lib/domain";
+import { authSecret } from "@/lib/env";
+import { formatDateTime, formatRupiah } from "@/lib/format";
+import { buildWhatsAppUrl, isValidWhatsAppNumber } from "@/lib/whatsapp";
+import {
+  findOrderForBuyer,
+  refreshOrderStatus,
+  signedDownloadPath,
+} from "@/server/checkout";
+import { gatewayForOrder } from "@/server/payments";
+
+export const metadata: Metadata = {
+  title: "Status pesanan",
+  robots: { index: false, follow: false },
+};
+
+type Props = {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<{ t?: string | string[] }>;
+};
+
+const buttonClass =
+  "flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-transform active:scale-[0.98] motion-reduce:active:scale-100";
+
+/**
+ * The buyer's order page, reached from Midtrans' finish redirect. Access
+ * needs the order's secret token (?t=). The status shown here comes from
+ * the database, refreshed from the Midtrans Status API while pending; the
+ * redirect's own query parameters are never trusted.
+ */
+export default async function OrderPage({
+  params,
+  searchParams,
+}: Props): Promise<ReactNode> {
+  const { code } = await params;
+  const { t } = await searchParams;
+  const token = typeof t === "string" ? t : null;
+  const db = getDb();
+
+  const found = await findOrderForBuyer(db, code, token);
+  if (!found) notFound();
+  let { order } = found;
+  const { product, delivery } = found;
+
+  const gateway =
+    order.status === "pending" ? await gatewayForOrder(db, order) : null;
+  if (order.status === "pending" && gateway) {
+    try {
+      const status = await refreshOrderStatus(db, gateway, order);
+      order = { ...order, status };
+    } catch (error) {
+      console.error("[order] status refresh failed", error);
+    }
+  }
+
+  const [transaction, profile] = await Promise.all([
+    db.query.paymentTransactions.findFirst({
+      where: eq(paymentTransactions.orderId, order.id),
+    }),
+    db.query.profiles.findFirst({ where: eq(profiles.id, order.profileId) }),
+  ]);
+  if (!profile) notFound();
+
+  // After a successful payment, the delivery row exists (created by the webhook or the refresh above).
+  const freshDelivery =
+    delivery ??
+    (order.status === "paid"
+      ? ((await db.query.digitalDeliveries.findFirst({
+          where: eq(digitalDeliveries.orderId, order.id),
+        })) ?? null)
+      : null);
+  const downloadPath =
+    order.status === "paid" && freshDelivery
+      ? signedDownloadPath(freshDelivery.id, authSecret())
+      : null;
+  const contactHref =
+    profile.whatsappNumber && isValidWhatsAppNumber(profile.whatsappNumber)
+      ? buildWhatsAppUrl(
+          profile.whatsappNumber,
+          `Halo, saya ingin bertanya tentang pesanan ${order.code} (${product.name}).`
+        )
+      : null;
+
+  return (
+    <ProfileSurface theme={profile.theme} accent={profile.accent}>
+      <main
+        id="konten"
+        className="mx-auto flex w-full max-w-[34rem] flex-col gap-5 px-4 pt-10 pb-12"
+      >
+        <StatusHeader status={order.status} />
+
+        <section
+          aria-label="Detail pesanan"
+          className="rounded-2xl bg-p-card p-5 shadow-[0_1px_3px_rgb(17_24_39/0.08)] ring-1 ring-p-line"
+        >
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
+            <dt className="text-p-muted">Nomor pesanan</dt>
+            <dd className="text-right font-mono font-medium">{order.code}</dd>
+            <dt className="text-p-muted">Produk</dt>
+            <dd className="text-right font-medium">{product.name}</dd>
+            {order.discountCode ? (
+              <>
+                <dt className="text-p-muted">Kode diskon</dt>
+                <dd className="text-right">
+                  {order.discountCode} (−{formatRupiah(order.discountAmount)})
+                </dd>
+              </>
+            ) : null}
+            <dt className="text-p-muted">Total</dt>
+            <dd className="text-right font-semibold">
+              {formatRupiah(order.amount)}
+            </dd>
+            <dt className="text-p-muted">Status</dt>
+            <dd className="text-right">{ORDER_STATUS_LABELS[order.status]}</dd>
+            <dt className="text-p-muted">Dibuat</dt>
+            <dd className="text-right">{formatDateTime(order.createdAt)}</dd>
+            {order.paidAt ? (
+              <>
+                <dt className="text-p-muted">Dibayar</dt>
+                <dd className="text-right">{formatDateTime(order.paidAt)}</dd>
+              </>
+            ) : null}
+          </dl>
+        </section>
+
+        {order.status === "paid" ? (
+          downloadPath ? (
+            <div className="flex flex-col gap-2">
+              <a
+                href={downloadPath}
+                rel="nofollow"
+                className={`${buttonClass} bg-p-accent text-p-accent-fg`}
+              >
+                <Icon icon={Download04Icon} className="size-5" />
+                {product.deliveryType === "link"
+                  ? "Buka produk"
+                  : "Unduh produk"}
+              </a>
+              <p className="text-center text-xs text-p-muted">
+                Simpan halaman ini. Link unduhan diperbarui setiap kali halaman
+                dibuka
+                {freshDelivery
+                  ? ` (sisa ${Math.max(0, freshDelivery.maxDownloads - freshDelivery.downloadCount)} kali unduh)`
+                  : ""}
+                .
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-2xl bg-p-card px-4 py-3 text-sm text-p-muted ring-1 ring-p-line">
+              Pembayaran sudah diterima. Penjual akan menghubungi Anda untuk
+              langkah berikutnya.
+            </p>
+          )
+        ) : null}
+
+        {order.status === "pending" ? (
+          <div className="flex flex-col gap-2">
+            {transaction?.redirectUrl ? (
+              <a
+                href={transaction.redirectUrl}
+                className={`${buttonClass} bg-p-accent text-p-accent-fg`}
+              >
+                Lanjutkan pembayaran
+              </a>
+            ) : null}
+            <Link
+              href={`/pesanan/${encodeURIComponent(order.code)}?t=${encodeURIComponent(token ?? "")}`}
+              className={`${buttonClass} bg-p-card ring-1 ring-p-line`}
+            >
+              Cek status lagi
+            </Link>
+          </div>
+        ) : null}
+
+        {order.status === "failed" ||
+        order.status === "expired" ||
+        order.status === "cancelled" ? (
+          <Link
+            href={`/${profile.username}/${product.slug}`}
+            className={`${buttonClass} bg-p-accent text-p-accent-fg`}
+          >
+            Pesan ulang
+          </Link>
+        ) : null}
+
+        {contactHref ? (
+          <a
+            href={contactHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 text-sm font-medium text-p-muted hover:text-p-fg"
+          >
+            <Icon icon={WhatsappIcon} className="size-[18px]" />
+            Hubungi penjual
+          </a>
+        ) : null}
+      </main>
+    </ProfileSurface>
+  );
+}
+
+function StatusHeader({
+  status,
+}: {
+  status: keyof typeof ORDER_STATUS_LABELS;
+}): ReactNode {
+  if (status === "paid") {
+    return (
+      <header className="flex flex-col items-center gap-2 text-center">
+        <Icon
+          icon={CheckmarkCircle02Icon}
+          className="size-12 text-p-accent"
+          strokeWidth={1.5}
+        />
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Pembayaran berhasil
+        </h1>
+        <p className="text-sm text-p-muted">
+          Terima kasih. Pembayaran Anda sudah terverifikasi.
+        </p>
+      </header>
+    );
+  }
+  if (status === "pending") {
+    return (
+      <header className="flex flex-col items-center gap-2 text-center">
+        <Icon
+          icon={Clock01Icon}
+          className="size-12 text-p-muted"
+          strokeWidth={1.5}
+        />
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Menunggu pembayaran
+        </h1>
+        <p className="text-sm text-p-muted">
+          Status akan berubah otomatis setelah pembayaran diterima Midtrans.
+        </p>
+      </header>
+    );
+  }
+  return (
+    <header className="flex flex-col items-center gap-2 text-center">
+      <Icon
+        icon={Alert02Icon}
+        className="size-12 text-p-muted"
+        strokeWidth={1.5}
+      />
+      <h1 className="text-2xl font-semibold tracking-tight">
+        {ORDER_STATUS_LABELS[status]}
+      </h1>
+      <p className="text-sm text-p-muted">
+        {status === "refunded"
+          ? "Dana pesanan ini sudah dikembalikan."
+          : "Pesanan ini tidak dibayar. Anda bisa memesan ulang."}
+      </p>
+    </header>
+  );
+}

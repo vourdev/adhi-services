@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+build
+package-lock.json
+db/migrations
+data
+storage
+.env*
