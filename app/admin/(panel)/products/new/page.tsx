@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { siteUrl } from "@/lib/env";
+import { blobStorageEnabled, siteUrl } from "@/lib/env";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 import { adminContext, ownerPayments } from "@/server/admin";
 
@@ -42,6 +42,7 @@ export default async function NewProductPage(): Promise<ReactNode> {
         )}
         paymentsReady={payments.status.ready}
         paymentsProblem={payments.problem}
+        directFileUpload={blobStorageEnabled()}
       />
     </div>
   );

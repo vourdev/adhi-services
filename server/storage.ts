@@ -1,25 +1,48 @@
 import { createReadStream } from "node:fs";
 import { mkdir, rm, stat, writeFile } from "node:fs/promises";
-import { extname, join, resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 
+import { BlobNotFoundError, del, get, head, put } from "@vercel/blob";
 import sharp from "sharp";
 
-import { storageDir } from "@/lib/env";
+import { blobStorageEnabled, storageDir } from "@/lib/env";
+import {
+  ALLOWED_FILE_EXTENSIONS,
+  fileExtension,
+  filePathname,
+  type ImageKind,
+  isPrivateKey,
+  isPublicKey,
+  MAX_FILE_BYTES,
+  MAX_IMAGE_BYTES,
+  mediaPathname,
+  safeFileName,
+} from "@/lib/storage-keys";
+
+export {
+  IMAGE_KINDS,
+  type ImageKind,
+  isPrivateKey,
+  MAX_FILE_BYTES,
+  MAX_IMAGE_BYTES,
+} from "@/lib/storage-keys";
 
 /**
- * Local file storage.
+ * File storage with two drivers:
  *
- * - storage/public/  processed images, served by /media/[...key]
- * - storage/private/ product files, served only through a signed,
- *   paid-order download (/api/download/[deliveryId])
+ * - Vercel Blob (one private store) when the project has a store connected
+ *   (BLOB_STORE_ID or BLOB_READ_WRITE_TOKEN). Serverless hosts discard local
+ *   files, so this is what runs on Vercel.
+ * - Local disk otherwise (development, a VPS or a container volume):
+ *   storage/public/ for images, storage/private/ for product files.
  *
- * This needs a persistent disk (a VPS, a container volume). Serverless
- * hosts such as Vercel discard local files; see README "Deploying".
+ * Either way images are served by /media/[...key] and product files only
+ * through a signed, paid-order download (/api/download/[deliveryId]).
  */
 
-export const IMAGE_KINDS = ["avatar", "cover", "thumbnail", "product"] as const;
-export type ImageKind = (typeof IMAGE_KINDS)[number];
+type Area = "public" | "private";
+type StoredObject = { stream: ReadableStream; size: number };
 
 const IMAGE_SIZES: Record<
   ImageKind,
@@ -32,45 +55,93 @@ const IMAGE_SIZES: Record<
   product: { width: 1200, height: 1200, fit: "inside" },
 };
 
-export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+export class StorageError extends Error {}
 
-export const ALLOWED_FILE_EXTENSIONS = new Set([
-  ".zip",
-  ".rar",
-  ".7z",
-  ".pdf",
-  ".epub",
-  ".txt",
-  ".md",
-  ".csv",
-  ".json",
-  ".docx",
-  ".xlsx",
-  ".pptx",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".mp3",
-  ".mp4",
-]);
-
-const PUBLIC_KEY = /^\d{4}\/[0-9a-f-]{36}\.webp$/;
-const PRIVATE_KEY = /^[0-9a-f-]{36}\.[a-z0-9]{1,5}$/;
+function blobPathname(area: Area, key: string): string {
+  return area === "public" ? mediaPathname(key) : filePathname(key);
+}
 
 function root(...parts: string[]): string {
   return resolve(storageDir(), ...parts);
 }
 
 /** Resolves a key inside a storage area, refusing anything that escapes it. */
-function safePath(area: "public" | "private", key: string): string | null {
+function safePath(area: Area, key: string): string | null {
   const base = root(area);
   const target = resolve(base, key);
   return target.startsWith(base + sep) ? target : null;
 }
 
-export class StorageError extends Error {}
+async function writeObject(
+  area: Area,
+  key: string,
+  data: Buffer,
+  contentType: string
+): Promise<void> {
+  if (blobStorageEnabled()) {
+    await put(blobPathname(area, key), data, {
+      access: "private",
+      contentType,
+      addRandomSuffix: false,
+    });
+    return;
+  }
+  const path = safePath(area, key);
+  if (!path) throw new StorageError("Lokasi penyimpanan tidak valid.");
+  await mkdir(join(path, ".."), { recursive: true });
+  await writeFile(path, data);
+}
+
+async function readObject(
+  area: Area,
+  key: string
+): Promise<StoredObject | null> {
+  if (blobStorageEnabled()) {
+    const result = await get(blobPathname(area, key), { access: "private" });
+    if (!result || result.statusCode !== 200) return null;
+    return { stream: result.stream, size: result.blob.size };
+  }
+  const path = safePath(area, key);
+  if (!path) return null;
+  try {
+    const info = await stat(path);
+    if (!info.isFile()) return null;
+    return {
+      stream: Readable.toWeb(createReadStream(path)) as ReadableStream,
+      size: info.size,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function objectExists(area: Area, key: string): Promise<boolean> {
+  if (blobStorageEnabled()) {
+    try {
+      await head(blobPathname(area, key));
+      return true;
+    } catch (error) {
+      if (error instanceof BlobNotFoundError) return false;
+      throw error;
+    }
+  }
+  const path = safePath(area, key);
+  if (!path) return false;
+  try {
+    return (await stat(path)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function deleteObject(area: Area, key: string): Promise<void> {
+  if (blobStorageEnabled()) {
+    await del(blobPathname(area, key));
+    return;
+  }
+  const path = safePath(area, key);
+  if (path) await rm(path, { force: true });
+}
 
 export async function saveImage(
   input: Buffer,
@@ -106,33 +177,15 @@ export async function saveImage(
     .toBuffer({ resolveWithObject: true });
 
   const key = `${new Date().getUTCFullYear()}/${crypto.randomUUID()}.webp`;
-  const path = safePath("public", key);
-  if (!path) throw new StorageError("Lokasi penyimpanan tidak valid.");
-  await mkdir(join(path, ".."), { recursive: true });
-  await writeFile(path, data);
+  await writeObject("public", key, data, "image/webp");
   return { url: `/media/${key}`, width: info.width, height: info.height };
 }
 
 export async function openPublicMedia(
   key: string
-): Promise<{ stream: ReadableStream; size: number } | null> {
-  if (!PUBLIC_KEY.test(key)) return null;
-  const path = safePath("public", key);
-  if (!path) return null;
-  try {
-    const info = await stat(path);
-    if (!info.isFile()) return null;
-    return {
-      stream: Readable.toWeb(createReadStream(path)) as ReadableStream,
-      size: info.size,
-    };
-  } catch {
-    return null;
-  }
-}
-
-export function isPrivateKey(key: string): boolean {
-  return PRIVATE_KEY.test(key);
+): Promise<StoredObject | null> {
+  if (!isPublicKey(key)) return null;
+  return readObject("public", key);
 }
 
 export async function savePrivateFile(
@@ -141,54 +194,34 @@ export async function savePrivateFile(
 ): Promise<{ key: string; name: string; size: number }> {
   if (input.byteLength > MAX_FILE_BYTES)
     throw new StorageError("File maksimal 50 MB.");
-  const extension = extname(originalName).toLowerCase();
+  const extension = fileExtension(originalName);
   if (!ALLOWED_FILE_EXTENSIONS.has(extension)) {
     throw new StorageError(
       `Tipe file ${extension || "tanpa ekstensi"} tidak didukung.`
     );
   }
   const key = `${crypto.randomUUID()}${extension}`;
-  const path = safePath("private", key);
-  if (!path) throw new StorageError("Lokasi penyimpanan tidak valid.");
-  await mkdir(root("private"), { recursive: true });
-  await writeFile(path, input);
-  const name =
-    originalName.replace(/[^\w.\- ()]/g, "_").slice(0, 150) ||
-    `produk${extension}`;
-  return { key, name, size: input.byteLength };
+  await writeObject("private", key, input, "application/octet-stream");
+  return {
+    key,
+    name: safeFileName(originalName, extension),
+    size: input.byteLength,
+  };
 }
 
 export async function privateFileExists(key: string): Promise<boolean> {
   if (!isPrivateKey(key)) return false;
-  const path = safePath("private", key);
-  if (!path) return false;
-  try {
-    return (await stat(path)).isFile();
-  } catch {
-    return false;
-  }
+  return objectExists("private", key);
 }
 
 export async function openPrivateFile(
   key: string
-): Promise<{ stream: ReadableStream; size: number } | null> {
+): Promise<StoredObject | null> {
   if (!isPrivateKey(key)) return null;
-  const path = safePath("private", key);
-  if (!path) return null;
-  try {
-    const info = await stat(path);
-    if (!info.isFile()) return null;
-    return {
-      stream: Readable.toWeb(createReadStream(path)) as ReadableStream,
-      size: info.size,
-    };
-  } catch {
-    return null;
-  }
+  return readObject("private", key);
 }
 
 export async function deletePrivateFile(key: string): Promise<void> {
   if (!isPrivateKey(key)) return;
-  const path = safePath("private", key);
-  if (path) await rm(path, { force: true });
+  await deleteObject("private", key);
 }

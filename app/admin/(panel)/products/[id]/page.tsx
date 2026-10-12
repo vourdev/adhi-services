@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { parseRange } from "@/lib/analytics/range";
-import { siteUrl } from "@/lib/env";
+import { blobStorageEnabled, siteUrl } from "@/lib/env";
 import { formatNumber, formatRupiah } from "@/lib/format";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 import { adminContext, ownerPayments } from "@/server/admin";
@@ -88,6 +88,7 @@ export default async function EditProductPage({
         )}
         paymentsReady={payments.status.ready}
         paymentsProblem={payments.problem}
+        directFileUpload={blobStorageEnabled()}
       />
     </div>
   );

@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  blobStorageEnabled,
   encryptionSecret,
   hasPublicSiteUrl,
   siteUrl,
@@ -148,8 +149,9 @@ export default async function SettingsPage(): Promise<ReactNode> {
 
       {isSuperAdmin ? (
         <p className="text-xs text-muted-foreground">
-          Penyimpanan file: {storageDir()} (gambar publik dan file produk
-          privat). Butuh disk persisten di server production.
+          {blobStorageEnabled()
+            ? "Penyimpanan file: Vercel Blob (store privat) untuk gambar dan file produk."
+            : `Penyimpanan file: ${storageDir()} (gambar publik dan file produk privat). Butuh disk persisten di server production, atau hubungkan Vercel Blob.`}
         </p>
       ) : null}
     </div>

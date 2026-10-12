@@ -10,9 +10,14 @@ function read(name: string): string | undefined {
   return value ? value : undefined;
 }
 
+/**
+ * The database: DATABASE_URL, or the TURSO_* variables the Vercel
+ * Marketplace Turso integration sets, or a local SQLite file.
+ */
 export function databaseConfig(): { url: string; authToken?: string } {
-  const url = read("DATABASE_URL") ?? "file:./data/app.db";
-  const authToken = read("DATABASE_AUTH_TOKEN");
+  const url =
+    read("DATABASE_URL") ?? read("TURSO_DATABASE_URL") ?? "file:./data/app.db";
+  const authToken = read("DATABASE_AUTH_TOKEN") ?? read("TURSO_AUTH_TOKEN");
   return authToken ? { url, authToken } : { url };
 }
 
@@ -73,6 +78,15 @@ export function encryptionSecret(): string | null {
 
 export function storageDir(): string {
   return read("STORAGE_DIR") ?? "./storage";
+}
+
+/**
+ * True when a Vercel Blob store is connected: uploads then go there instead
+ * of the local disk. A connected store sets BLOB_STORE_ID (signed in with
+ * the deployment's OIDC token); older stores use BLOB_READ_WRITE_TOKEN.
+ */
+export function blobStorageEnabled(): boolean {
+  return Boolean(read("BLOB_STORE_ID") ?? read("BLOB_READ_WRITE_TOKEN"));
 }
 
 export type MidtransConfig = {

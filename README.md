@@ -253,16 +253,32 @@ otherwise fail with `SQLITE_BUSY`.
 
 ## Deploying
 
-The app needs a server that keeps files. Two supported shapes:
+Two supported shapes:
 
-- **VPS / container with a volume** (simplest): `npm ci && npm run build &&
+- **Vercel** (current): database on Turso (Vercel Marketplace), uploads in a
+  private Vercel Blob store, functions in Mumbai (`bom1`, `vercel.json`) next
+  to the database (Turso on the Marketplace has no Singapore region).
+  1. Connect a Turso database and a private Blob store to the project, for
+     the Production and Preview environments. They set `TURSO_DATABASE_URL`,
+     `TURSO_AUTH_TOKEN` and `BLOB_READ_WRITE_TOKEN` (or `BLOB_STORE_ID`);
+     local development keeps using `data/` and `storage/`.
+  2. Set `SITE_URL`, `AUTH_SECRET`, `ENCRYPTION_KEY` and, for direct
+     checkout, `MIDTRANS_SERVER_KEY` / `MIDTRANS_IS_PRODUCTION`.
+  3. Deploy. Production builds run `npm run vercel-build`, which applies
+     database migrations first; preview builds never touch the schema.
+  4. Create the owner account once, from this folder:
+     `vercel env pull .env.production.local --environment=production`, then
+     `npm run setup:production` (asks for email and password), then delete
+     `.env.production.local`.
+
+  Function requests are capped at 4.5 MB: the dashboard scales large photos
+  down before uploading, and product files (up to 50 MB) go straight from
+  the browser to Blob with a one-file, 15-minute token
+  (`/api/admin/uploads/blob`).
+
+- **VPS / container with a volume**: `npm ci && npm run build &&
 npm run setup && npm start`, with `data/` and `storage/` on persistent disk.
   Put it behind a reverse proxy that sends `X-Forwarded-Host`.
-- **Serverless (e.g. Vercel)**: the database works with Turso
-  (`DATABASE_URL=libsql://...`), but uploads in `storage/` would be lost
-  between invocations. That needs an object-storage driver (for example
-  Vercel Blob) in `server/storage.ts`, which is not built yet. External https
-  image URLs and "Link rahasia" delivery work without it.
 
 SQLite on local disk suits one server process. For several instances, use
 Turso.

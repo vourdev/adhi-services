@@ -1,3 +1,4 @@
+import { uploadPresigned } from "@vercel/blob/client";
 import { ImageUp, Link2, Trash2 } from "lucide-react";
 import { type ReactNode, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -5,8 +6,54 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  ALLOWED_FILE_EXTENSIONS,
+  fileExtension,
+  filePathname,
+  type ImageKind,
+  MAX_FILE_BYTES,
+  safeFileName,
+} from "@/lib/storage-keys";
 
-type ImageKind = "avatar" | "cover" | "thumbnail" | "product";
+/**
+ * Hosted functions accept request bodies up to 4.5 MB, so larger photos are
+ * scaled down in the browser first. The server re-encodes them anyway, at
+ * no more than 1600 px.
+ */
+const IMAGE_UPLOAD_TARGET_BYTES = 3.5 * 1024 * 1024;
+const IMAGE_MAX_SIDE = 2560;
+
+async function shrinkImage(file: File): Promise<File> {
+  if (file.size <= IMAGE_UPLOAD_TARGET_BYTES) return file;
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file; // Not decodable here (e.g. HEIC); the server decides.
+  }
+  const scale = Math.min(
+    1,
+    IMAGE_MAX_SIDE / Math.max(bitmap.width, bitmap.height)
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  for (const type of ["image/webp", "image/jpeg"]) {
+    for (const quality of [0.9, 0.8, 0.7]) {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, type, quality)
+      );
+      // A browser that cannot encode the type falls back to PNG; skip that.
+      if (blob?.type === type && blob.size <= IMAGE_UPLOAD_TARGET_BYTES) {
+        const name = file.name.replace(/\.[^.]+$/, "") || "gambar";
+        return new File([blob], `${name}.${type.split("/")[1]}`, { type });
+      }
+    }
+  }
+  return file;
+}
 
 export async function uploadFile(
   file: File,
@@ -14,7 +61,7 @@ export async function uploadFile(
 ): Promise<Record<string, unknown>> {
   const form = new FormData();
   form.set("kind", kind);
-  form.set("file", file);
+  form.set("file", kind === "product-file" ? file : await shrinkImage(file));
   const response = await fetch("/api/admin/uploads", {
     method: "POST",
     body: form,
@@ -26,9 +73,49 @@ export async function uploadFile(
   >;
   if (!response.ok)
     throw new Error(
-      typeof data.error === "string" ? data.error : "Upload gagal."
+      typeof data.error === "string"
+        ? data.error
+        : response.status === 413
+          ? "File terlalu besar untuk diunggah."
+          : "Upload gagal."
     );
   return data;
+}
+
+/**
+ * Product file upload. With Vercel Blob the browser sends the file straight
+ * to the private store (up to 50 MB); otherwise it goes through the server.
+ */
+export async function uploadProductFile(
+  file: File,
+  direct: boolean
+): Promise<{ key: string; name: string; size: number }> {
+  if (!direct) {
+    const data = await uploadFile(file, "product-file");
+    return {
+      key: String(data.key),
+      name: String(data.name),
+      size: Number(data.size),
+    };
+  }
+  const extension = fileExtension(file.name);
+  if (!ALLOWED_FILE_EXTENSIONS.has(extension))
+    throw new Error(
+      `Tipe file ${extension || "tanpa ekstensi"} tidak didukung.`
+    );
+  if (file.size > MAX_FILE_BYTES) throw new Error("File maksimal 50 MB.");
+  const key = `${crypto.randomUUID()}${extension}`;
+  try {
+    await uploadPresigned(filePathname(key), file, {
+      access: "private",
+      handleUploadUrl: "/api/admin/uploads/blob",
+      contentType: "application/octet-stream",
+    });
+  } catch (error) {
+    console.error("[upload] direct upload failed", error);
+    throw new Error("Upload gagal. Coba lagi.");
+  }
+  return { key, name: safeFileName(file.name, extension), size: file.size };
 }
 
 /**

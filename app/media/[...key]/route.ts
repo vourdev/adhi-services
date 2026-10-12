@@ -14,7 +14,8 @@ export async function GET(
     headers: {
       "Content-Type": "image/webp",
       "Content-Length": String(media.size),
-      "Cache-Control": "public, max-age=31536000, immutable",
+      // s-maxage lets the hosting CDN keep it too, so a Blob read happens once per edge.
+      "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
     },
   });

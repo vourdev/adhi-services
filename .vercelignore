@@ -1,0 +1,5 @@
+# Local-only data; production uses Turso and Vercel Blob.
+/data
+/storage
+.env*
+!.env.example

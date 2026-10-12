@@ -75,7 +75,10 @@ import {
   deleteProductAction,
   updateProductAction,
 } from "../../../_actions/products";
-import { ImageField, uploadFile } from "../../../_components/image-field";
+import {
+  ImageField,
+  uploadProductFile,
+} from "../../../_components/image-field";
 
 export type ProductFormValues = z.input<typeof productInputSchema>;
 type ProductOutput = z.output<typeof productInputSchema>;
@@ -91,6 +94,8 @@ type Props = {
   paymentsReady: boolean;
   /** Why direct checkout is off, already worded for this owner. */
   paymentsProblem: string | null;
+  /** Product files go straight to Vercel Blob instead of through the server. */
+  directFileUpload: boolean;
 };
 
 function digitsOnly(value: string): number | null {
@@ -108,6 +113,7 @@ export function ProductForm({
   profileWhatsappSet,
   paymentsReady,
   paymentsProblem,
+  directFileUpload,
 }: Props): ReactNode {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -141,15 +147,15 @@ export function ProductForm({
     if (!file) return;
     setUploading(true);
     try {
-      const data = await uploadFile(file, "product-file");
-      form.setValue("deliveryFileKey", String(data.key), {
+      const data = await uploadProductFile(file, directFileUpload);
+      form.setValue("deliveryFileKey", data.key, {
         shouldDirty: true,
         shouldValidate: true,
       });
-      form.setValue("deliveryFileName", String(data.name), {
+      form.setValue("deliveryFileName", data.name, {
         shouldDirty: true,
       });
-      form.setValue("deliveryFileSize", Number(data.size), {
+      form.setValue("deliveryFileSize", data.size, {
         shouldDirty: true,
       });
       toast.success("File produk diunggah ke penyimpanan privat");

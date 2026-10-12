@@ -28,6 +28,11 @@ function ensureLocalDirectory(url: string): void {
 
 function open(): Holder {
   const config = databaseConfig();
+  // Vercel's filesystem is read-only and temporary: a local file cannot be the database there.
+  if (process.env.VERCEL && config.url.startsWith("file:"))
+    throw new Error(
+      "Database belum dikonfigurasi: hubungkan Turso (TURSO_DATABASE_URL) ke project Vercel."
+    );
   ensureLocalDirectory(config.url);
   const client = createClient(config);
   return { client, db: drizzle(client, { schema }), schema };
