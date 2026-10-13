@@ -5,14 +5,16 @@ import { type ReactNode, useState } from "react";
 
 import { formatRupiah } from "@/lib/format";
 
+import { PriceTag } from "./blocks";
 import { BottomBar, ctaClass } from "./bottom-bar";
 import { type AppliedDiscount, DiscountCodeField } from "./discount-code-field";
 import { Icon } from "./icon";
 
 /**
  * WhatsApp ordering on the product page: an optional discount code in the
- * page and the order button fixed at the bottom. The code goes to /go/wa as
- * ?kode=, which checks it again before writing it into the chat message.
+ * page, and the order button (in the page on wide screens, fixed at the
+ * bottom on phones). The code goes to /go/wa as ?kode=, which checks it
+ * again before writing it into the chat message.
  */
 export function WhatsAppOrder({
   productId,
@@ -27,11 +29,17 @@ export function WhatsAppOrder({
 }): ReactNode {
   const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
   const href = `/go/wa/${productId}${discount ? `?kode=${encodeURIComponent(discount.code)}` : ""}`;
+  const button = (
+    <a href={href} rel="nofollow" className={ctaClass}>
+      <Icon icon={WhatsappIcon} className="size-5" />
+      {label}
+    </a>
+  );
 
   return (
     <>
       {discountEnabled ? (
-        <div className="mt-5 flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2.5">
           <DiscountCodeField
             productId={productId}
             applied={discount}
@@ -51,11 +59,9 @@ export function WhatsAppOrder({
           ) : null}
         </div>
       ) : null}
-      <BottomBar>
-        <a href={href} rel="nofollow" className={ctaClass}>
-          <Icon icon={WhatsappIcon} className="size-5" />
-          {label}
-        </a>
+      <div className="hidden lg:block">{button}</div>
+      <BottomBar price={<PriceTag amount={discount?.finalPrice ?? price} />}>
+        {button}
       </BottomBar>
     </>
   );

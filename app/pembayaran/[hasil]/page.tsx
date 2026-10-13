@@ -37,19 +37,19 @@ const PAGES: Record<
   selesai: {
     icon: CheckmarkCircle02Icon,
     title: "Terima kasih",
-    text: "Midtrans sedang mengonfirmasi pembayaran Anda. Pesanan diproses otomatis setelah pembayaran diterima.",
-    help: "Link halaman pesanan (status dan produk) tersimpan di browser yang dipakai saat checkout. Bukti pembayaran juga dikirim Midtrans ke email Anda. Ada kendala? Hubungi penjual dan sebutkan nomor pesanan.",
+    text: "Pembayaran Anda sedang dikonfirmasi. Pesanan diproses otomatis setelah pembayaran diterima.",
+    help: "Link halaman pesanan (status dan produk) tersimpan di browser yang dipakai saat checkout. Bukti pembayaran juga dikirim ke email Anda. Ada kendala? Hubungi penjual dan sebutkan nomor pesanan.",
   },
   "belum-selesai": {
     icon: Clock01Icon,
     title: "Pembayaran belum selesai",
     text: "Belum ada pembayaran yang diterima untuk pesanan ini.",
-    help: "Anda bisa memesan ulang dari halaman penjual. Kalau ternyata sudah membayar, tunggu beberapa menit: pesanan diperbarui otomatis setelah Midtrans menerima pembayaran.",
+    help: "Anda bisa memesan ulang dari halaman penjual. Kalau ternyata sudah membayar, tunggu beberapa menit: pesanan diperbarui otomatis setelah pembayaran diterima.",
   },
   gagal: {
     icon: Alert02Icon,
     title: "Pembayaran tidak berhasil",
-    text: "Midtrans tidak bisa memproses pembayaran ini.",
+    text: "Pembayaran ini tidak bisa diproses.",
     help: "Coba lagi dari halaman penjual, bisa dengan metode pembayaran lain. Kalau saldo Anda terlanjur terpotong, hubungi penjual dan sebutkan nomor pesanan.",
   },
 };

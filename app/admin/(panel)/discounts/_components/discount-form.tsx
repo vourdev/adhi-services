@@ -264,6 +264,7 @@ export function DiscountForm({
                     <InputGroupInput
                       id="discountValue"
                       inputMode="numeric"
+                      placeholder={type === "fixed" ? "10.000" : "10"}
                       aria-invalid={Boolean(errors.discountValue)}
                       value={
                         typeof field.value === "number"

@@ -13,6 +13,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   InputGroup,
   InputGroupAddon,
@@ -94,6 +95,7 @@ export function PublicSettingsForm({
               </InputGroupAddon>
               <InputGroupInput
                 id="username"
+                placeholder="namaanda"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 aria-invalid={Boolean(errors.username)}
@@ -190,11 +192,11 @@ export function PublicSettingsForm({
                 </button>
               </p>
             ) : (
-              <Input
+              <PasswordInput
                 id="customMidtransServerKey"
-                type="password"
                 autoComplete="off"
-                spellCheck={false}
+                showLabel="Tampilkan Server Key"
+                hideLabel="Sembunyikan Server Key"
                 placeholder={
                   savedKey
                     ? "Kosongkan untuk tetap memakai kunci tersimpan"

@@ -134,7 +134,7 @@ export function DiscountCodeField({
           placeholder="Contoh: 1010"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
-          className="block h-12 min-w-0 flex-1 rounded-[var(--p-r-media)] border border-p-line bg-p-card px-3.5 text-base font-semibold tracking-wide text-p-fg uppercase placeholder:font-normal placeholder:tracking-normal placeholder:text-p-muted/70 placeholder:normal-case aria-invalid:border-red-500"
+          className="p-input block h-12 min-w-0 flex-1 px-3.5 text-base font-semibold tracking-wide uppercase placeholder:font-normal placeholder:tracking-normal placeholder:normal-case"
         />
         <button
           type="button"

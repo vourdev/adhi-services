@@ -135,6 +135,11 @@ export function LinkFormDialog({
                 id="link-title"
                 autoFocus
                 maxLength={100}
+                placeholder={
+                  isHeading
+                    ? "Contoh: Produk digital"
+                    : "Contoh: Lihat portofolio"
+                }
                 aria-invalid={Boolean(errors.title)}
                 {...form.register("title")}
               />
@@ -186,6 +191,7 @@ export function LinkFormDialog({
                     id="link-description"
                     rows={2}
                     maxLength={160}
+                    placeholder="Satu kalimat singkat di bawah judul"
                     {...form.register("description")}
                   />
                   <FieldError>{errors.description?.message}</FieldError>

@@ -47,7 +47,7 @@ const RETURN_NOTES = {
   "belum-selesai":
     "Pembayaran belum diselesaikan. Lanjutkan sebelum batas waktunya, atau pilih metode pembayaran lain.",
   gagal:
-    "Midtrans tidak bisa memproses pembayaran tadi. Coba lagi dengan metode yang sama atau metode lain.",
+    "Pembayaran tadi tidak bisa diproses. Coba lagi dengan metode yang sama atau metode lain.",
 } as const;
 
 const buttonClass =
@@ -279,7 +279,7 @@ function StatusHeader({
           Menunggu pembayaran
         </h1>
         <p className="text-sm text-p-muted">
-          Status akan berubah otomatis setelah pembayaran diterima Midtrans.
+          Status berubah otomatis setelah pembayaran diterima.
         </p>
       </header>
     );

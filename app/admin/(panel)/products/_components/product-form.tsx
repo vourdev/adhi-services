@@ -230,6 +230,7 @@ export function ProductForm({
                 <Input
                   id="name"
                   maxLength={120}
+                  placeholder="Contoh: Template Landing Page"
                   aria-invalid={Boolean(errors.name)}
                   {...form.register("name", {
                     onChange: (event: { target: { value: string } }) => {
@@ -252,6 +253,7 @@ export function ProductForm({
                   </InputGroupAddon>
                   <InputGroupInput
                     id="slug"
+                    placeholder="template-landing-page"
                     aria-invalid={Boolean(errors.slug)}
                     {...form.register("slug", {
                       onChange: () => setSlugTouched(true),
@@ -266,6 +268,7 @@ export function ProductForm({
                   id="description"
                   rows={6}
                   maxLength={5000}
+                  placeholder="Jelaskan isi produk, untuk siapa, dan apa yang didapat pembeli."
                   {...form.register("description")}
                 />
                 <FieldDescription>
@@ -303,6 +306,7 @@ export function ProductForm({
                       <InputGroupInput
                         id="price"
                         inputMode="numeric"
+                        placeholder="50.000"
                         aria-invalid={Boolean(errors.priceAmount)}
                         value={
                           typeof field.value === "number"
@@ -633,6 +637,7 @@ export function ProductForm({
                   id="seoDescription"
                   rows={2}
                   maxLength={160}
+                  placeholder="Ringkasan untuk hasil pencarian. Kosongkan untuk memakai awal deskripsi."
                   {...form.register("seoDescription")}
                 />
                 <FieldError>{errors.seoDescription?.message}</FieldError>

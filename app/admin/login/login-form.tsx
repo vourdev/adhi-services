@@ -10,6 +10,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Spinner } from "@/components/ui/spinner";
 
 import { loginAction, type LoginState } from "../_actions/auth";
@@ -32,6 +33,7 @@ export function LoginForm({ next }: { next: string }): ReactNode {
             name="email"
             type="email"
             autoComplete="username"
+            placeholder="nama@email.com"
             defaultValue={state?.email ?? ""}
             required
             aria-invalid={Boolean(errors.email)}
@@ -41,11 +43,11 @@ export function LoginForm({ next }: { next: string }): ReactNode {
         </Field>
         <Field data-invalid={Boolean(errors.password) || undefined}>
           <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
+            placeholder="Masukkan password"
             required
             aria-invalid={Boolean(errors.password)}
             className="h-10"

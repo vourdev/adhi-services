@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { UserPlan } from "@/lib/domain";
@@ -433,10 +434,9 @@ export function MembersClient({ members }: { members: MemberSummary[] }) {
 
             <div className="space-y-1.5">
               <Label htmlFor="create-pwd">Password Awal</Label>
-              <Input
+              <PasswordInput
                 id="create-pwd"
                 name="password"
-                type="password"
                 required
                 minLength={10}
                 autoComplete="new-password"
@@ -594,10 +594,9 @@ export function MembersClient({ members }: { members: MemberSummary[] }) {
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="reset-pwd">Password Baru</Label>
-              <Input
+              <PasswordInput
                 id="reset-pwd"
                 name="newPassword"
-                type="password"
                 required
                 minLength={10}
                 autoComplete="new-password"

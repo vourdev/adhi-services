@@ -184,6 +184,9 @@ export function SocialsManager({
                       <Input
                         value={editUrl}
                         onChange={(event) => setEditUrl(event.target.value)}
+                        placeholder={
+                          PLACEHOLDER[social.platform] ?? "https://..."
+                        }
                         aria-label={`URL ${SOCIAL_LABELS[social.platform]}`}
                         autoFocus
                       />

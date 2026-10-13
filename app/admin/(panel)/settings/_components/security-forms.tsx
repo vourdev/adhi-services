@@ -22,7 +22,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 
@@ -62,18 +62,33 @@ export function ChangePasswordForm(): ReactNode {
       <FieldGroup>
         {(
           [
-            ["currentPassword", "Password saat ini", "current-password"],
-            ["newPassword", "Password baru", "new-password"],
-            ["confirmPassword", "Ulangi password baru", "new-password"],
+            [
+              "currentPassword",
+              "Password saat ini",
+              "current-password",
+              "Password yang dipakai sekarang",
+            ],
+            [
+              "newPassword",
+              "Password baru",
+              "new-password",
+              "Minimal 10 karakter, huruf dan angka",
+            ],
+            [
+              "confirmPassword",
+              "Ulangi password baru",
+              "new-password",
+              "Ketik ulang password baru",
+            ],
           ] as const
-        ).map(([name, label, autoComplete]) => (
+        ).map(([name, label, autoComplete, placeholder]) => (
           <Field key={name} data-invalid={Boolean(errors[name]) || undefined}>
             <FieldLabel htmlFor={name}>{label}</FieldLabel>
-            <Input
+            <PasswordInput
               id={name}
               name={name}
-              type="password"
               autoComplete={autoComplete}
+              placeholder={placeholder}
               aria-invalid={Boolean(errors[name])}
             />
             {name === "newPassword" ? (

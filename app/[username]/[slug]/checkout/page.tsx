@@ -1,12 +1,10 @@
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, SquareLock02Icon } from "@hugeicons/core-free-icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { PriceTag } from "@/components/profile/blocks";
 import { Icon } from "@/components/profile/icon";
-import { MediaImage } from "@/components/profile/media-image";
 import { ProfileSurface } from "@/components/profile/profile-view";
 import { ViewBeacon } from "@/components/profile/view-beacon";
 import { getDb } from "@/db/client";
@@ -41,50 +39,61 @@ export default async function CheckoutPage({
 
   return (
     <ProfileSurface look={lookFromProfile(profile)}>
-      <div className="mx-auto flex w-full max-w-[34rem] flex-col px-4 pt-4 pb-12">
-        <Link
-          href={productPath}
-          className="flex w-fit items-center gap-2 rounded-full py-2 pr-3 text-sm font-medium text-p-muted hover:text-p-fg"
-        >
-          <Icon icon={ArrowLeft01Icon} className="size-[18px]" />
-          Kembali
-        </Link>
-
-        <main id="konten" className="mt-2 flex flex-col gap-6">
-          <h1 className="text-2xl font-bold tracking-tight">Checkout</h1>
-
-          <section
-            aria-label="Ringkasan pesanan"
-            className="p-card flex items-center gap-3 p-3"
+      <div className="mx-auto w-full max-w-[34rem] px-4 pt-3 pb-12 lg:max-w-5xl lg:px-8 lg:pt-8">
+        <nav className="flex items-center justify-between gap-3">
+          <Link
+            href={productPath}
+            className="flex items-center gap-2 rounded-full py-2 pr-3 text-[14px] font-semibold text-p-muted hover:text-p-fg"
           >
-            {product.coverUrl ? (
-              <MediaImage
-                src={product.coverUrl}
-                alt=""
-                width={128}
-                height={128}
-                className="size-16 shrink-0 rounded-[var(--p-r-media)] object-cover"
-              />
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 text-[15px] leading-snug font-semibold">
-                {product.name}
-              </p>
-              <div className="mt-1">
-                <PriceTag amount={product.priceAmount} />
-              </div>
-            </div>
-          </section>
+            <Icon icon={ArrowLeft01Icon} className="size-[18px]" />
+            Kembali
+          </Link>
+          <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-p-muted">
+            <Icon icon={SquareLock02Icon} className="size-4" />
+            Pembayaran aman
+          </span>
+        </nav>
+
+        <main id="konten" className="mt-4 lg:mt-6">
+          <header className="flex flex-col gap-3">
+            <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight">
+              Checkout
+            </h1>
+            <ol
+              aria-label="Langkah"
+              className="flex items-center gap-2.5 text-[13px] font-medium"
+            >
+              <li aria-current="step" className="flex items-center gap-2">
+                <span className="grid size-6 place-items-center rounded-full bg-p-accent text-xs font-bold text-p-accent-fg">
+                  1
+                </span>
+                Data pembeli
+              </li>
+              <li aria-hidden className="h-px w-6 bg-p-line" />
+              <li className="flex items-center gap-2 text-p-muted">
+                <span className="grid size-6 place-items-center rounded-full text-xs font-bold ring-1 ring-p-line ring-inset">
+                  2
+                </span>
+                Pembayaran
+              </li>
+            </ol>
+          </header>
 
           {paymentsReady ? (
             <CheckoutForm
-              productId={product.id}
+              product={{
+                id: product.id,
+                name: product.name,
+                coverUrl: product.coverUrl,
+                hasDelivery: product.hasDelivery,
+              }}
+              seller={profile.displayName}
               idempotencyKey={crypto.randomUUID()}
               price={product.priceAmount}
               discountEnabled={discountEnabled}
             />
           ) : (
-            <p className="p-card px-4 py-6 text-center text-sm text-p-muted">
+            <p className="p-card mt-6 px-4 py-6 text-center text-sm text-p-muted">
               Pembayaran online belum tersedia. Silakan hubungi penjual.
             </p>
           )}

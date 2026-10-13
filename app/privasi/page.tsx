@@ -41,8 +41,8 @@ export default function PrivacyPage(): ReactNode {
           <p className="mt-2">
             Saat membeli produk lewat checkout langsung, nama, email, dan nomor
             WhatsApp (jika diisi) disimpan untuk memproses dan mengirim pesanan.
-            Pembayaran diproses oleh Midtrans; data kartu atau rekening tidak
-            pernah melewati server ini.
+            Pembayaran diproses oleh penyedia payment gateway; data kartu atau
+            rekening tidak pernah melewati server ini.
           </p>
           <p className="mt-2">
             Untuk produk yang dipesan lewat WhatsApp, percakapan berlangsung

@@ -333,6 +333,44 @@
   outline-offset: 3px;
 }
 
+/*
+ * Text fields on public pages (checkout, discount code). Unlayered like the
+ * focus rule above, so the field's own focus ring replaces the outline.
+ */
+.p-input {
+  border: 1px solid var(--p-line);
+  border-radius: var(--p-r-media);
+  background-color: var(--p-card);
+  color: var(--p-fg);
+  transition-property: border-color, box-shadow;
+  transition-duration: 150ms;
+}
+.p-input::placeholder {
+  color: color-mix(in oklab, var(--p-muted) 80%, transparent);
+}
+.profile-surface .p-input:focus-visible {
+  outline: none;
+  border-color: var(--p-accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--p-accent) 24%, transparent);
+}
+.p-input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+[data-card-style="glass"] .p-input {
+  border-color: var(--p-glass-line);
+  background-color: var(--p-glass);
+}
+[data-card-style="outline"] .p-input {
+  background-color: transparent;
+}
+[data-card-style="neobrutalism"] .p-input {
+  border: 2px solid var(--p-ink);
+}
+.profile-surface[data-card-style="neobrutalism"] .p-input:focus-visible {
+  border-color: var(--p-ink);
+  box-shadow: 3px 3px 0 0 var(--p-ink);
+}
+
 /* Named accents. Every pair passes WCAG AA as button text and as text on the page. */
 [data-accent="blue"] {
   --accent-light: #1d4fd8;

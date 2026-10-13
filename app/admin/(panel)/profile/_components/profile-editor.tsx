@@ -150,6 +150,7 @@ export function ProfileEditor({
                   <Input
                     id="displayName"
                     maxLength={60}
+                    placeholder="Nama yang tampil di profil"
                     aria-invalid={Boolean(errors.displayName)}
                     {...form.register("displayName")}
                   />
@@ -161,6 +162,7 @@ export function ProfileEditor({
                     id="bio"
                     rows={3}
                     maxLength={280}
+                    placeholder="Ceritakan singkat siapa Anda dan apa yang Anda tawarkan."
                     {...form.register("bio")}
                   />
                   <FieldDescription>

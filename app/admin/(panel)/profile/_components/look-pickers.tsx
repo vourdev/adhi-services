@@ -410,6 +410,7 @@ export function AccentPicker({
           </InputGroupAddon>
           <InputGroupInput
             aria-label="Kode warna aksen (hex)"
+            placeholder="2563eb"
             value={draft}
             maxLength={7}
             spellCheck={false}
