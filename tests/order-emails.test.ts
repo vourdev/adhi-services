@@ -368,6 +368,21 @@ describe("Resend", () => {
     );
   });
 
+  test("a reused idempotency key counts as already sent", async () => {
+    const send = createResendSender(
+      { apiKey: "re_test", fromAddress: "pesanan@toko.example.id" },
+      async () => Response.json({ message: "conflict" }, { status: 409 })
+    );
+    await send({
+      from: "a@b.id",
+      to: "c@d.id",
+      subject: "x",
+      html: "x",
+      text: "x",
+      idempotencyKey: "receipt/1",
+    });
+  });
+
   test("email stays off until both the key and the sender address are set", () => {
     const saved = {
       key: process.env.RESEND_API_KEY,

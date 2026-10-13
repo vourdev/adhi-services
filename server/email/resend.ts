@@ -45,6 +45,12 @@ export function createResendSender(
     } catch (error) {
       throw new EmailError("Resend tidak bisa dihubungi.", { cause: error });
     }
+    // 409: this idempotency key was already used for this email, so it went
+    // out before; retrying would only repeat the conflict.
+    if (response.status === 409) {
+      console.warn(`[email] ${message.idempotencyKey} already sent`);
+      return;
+    }
     if (!response.ok) {
       const data = (await response.json().catch(() => null)) as {
         message?: unknown;
