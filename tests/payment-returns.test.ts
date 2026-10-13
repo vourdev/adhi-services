@@ -4,11 +4,12 @@ import { after, before, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
-import { profiles } from "@/db/schema";
+import { profiles, webhookEvents } from "@/db/schema";
 import { midtransUrls } from "@/lib/midtrans-urls";
 import { productInputSchema } from "@/lib/validation";
 import type { VisitorContext } from "@/server/analytics/ingest";
 import {
+  handleMidtransNotification,
   handleMidtransRecurringNotification,
   startCheckout,
 } from "@/server/checkout";
@@ -378,5 +379,97 @@ describe("recurring notifications", () => {
       httpStatus: 200,
       result: "ignored:not_found_at_provider",
     });
+  });
+});
+
+describe("notification payloads as Midtrans sends them", () => {
+  /** Shaped like the dashboard's "Test notification URL" request. */
+  function dashboardTest(signedWith: string) {
+    const payload = {
+      transaction_type: "on-us",
+      transaction_time: "2026-10-13 15:20:01",
+      transaction_status: "capture",
+      transaction_id: "513f1f01-c9da-474c-9fc9-d5c64364b709",
+      status_message: "midtrans payment notification",
+      status_code: "200",
+      payment_type: "credit_card",
+      order_id:
+        "payment_notif_test_G621680278_c4b6a1c6-2b4f-4b7e-9d1e-6a1f8b0e2c3d",
+      merchant_id: "G621680278",
+      masked_card: "48111111-1114",
+      gross_amount: "105000.00",
+      fraud_status: "accept",
+      currency: "IDR",
+      channel_response_message: "Approved",
+      bank: "bni",
+    };
+    return JSON.stringify({
+      ...payload,
+      signature_key: midtransSignature(payload, signedWith),
+    });
+  }
+
+  test("the dashboard test gets 200 and nothing is stored", async () => {
+    const before = (await db.select().from(webhookEvents)).length;
+    assert.deepEqual(
+      await handleMidtransNotification(
+        db,
+        () => gateway,
+        dashboardTest(SERVER_KEY)
+      ),
+      { httpStatus: 200, result: "test:signature_ok" }
+    );
+    // Signed with another account's key: still 200, but the log says so.
+    assert.deepEqual(
+      await handleMidtransNotification(
+        db,
+        () => gateway,
+        dashboardTest("SB-Mid-server-another-account")
+      ),
+      { httpStatus: 200, result: "test:signature_mismatch" }
+    );
+    assert.deepEqual(
+      await handleMidtransNotification(
+        db,
+        () => null,
+        dashboardTest(SERVER_KEY)
+      ),
+      { httpStatus: 200, result: "test:no_server_key" }
+    );
+    assert.equal((await db.select().from(webhookEvents)).length, before);
+  });
+
+  test("optional fields sent as null are accepted", async () => {
+    const payload = {
+      order_id: order.code,
+      status_code: "201",
+      gross_amount: "50000.00",
+      transaction_status: "pending",
+      fraud_status: null,
+      transaction_id: null,
+      payment_type: null,
+    };
+    const result = await handleMidtransNotification(
+      db,
+      () => gateway,
+      JSON.stringify({
+        ...payload,
+        signature_key: midtransSignature(payload, SERVER_KEY),
+      })
+    );
+    assert.equal(result.httpStatus, 200);
+  });
+
+  test("a payload Midtrans would never send is refused, naming the fields", async () => {
+    const result = await handleMidtransNotification(
+      db,
+      () => gateway,
+      JSON.stringify({ order_id: order.code, status_code: 200 })
+    );
+    assert.equal(result.httpStatus, 400);
+    assert.equal(
+      result.result,
+      "invalid_payload:status_code,gross_amount,signature_key,transaction_status"
+    );
   });
 });

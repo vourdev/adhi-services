@@ -28,6 +28,8 @@ export async function POST(request: Request) {
     );
     if (result.httpStatus !== 200)
       console.warn("[midtrans] notification", result.httpStatus, result.result);
+    else if (result.result.startsWith("test:"))
+      console.info("[midtrans] dashboard test notification", result.result);
     return NextResponse.json(
       { result: result.result },
       { status: result.httpStatus }

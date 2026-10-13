@@ -376,16 +376,30 @@ export async function applyGatewayStatus(
 
 // ----------------------------------------------------------------- webhook
 
+/** Optional text that Midtrans may also send as null. */
+const optionalField = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .nullish()
+    .transform((value) => value ?? undefined);
+
+// Only the fields the handler uses are checked; Midtrans adds many more.
+// Order IDs from other systems on the same account (and the dashboard's
+// test notifications) are longer than this site's own order numbers.
 const notificationSchema = z.object({
-  order_id: z.string().min(1).max(64),
+  order_id: z.string().min(1).max(255),
   status_code: z.string().min(1).max(8),
   gross_amount: z.string().min(1).max(32),
   signature_key: z.string().min(1).max(256),
   transaction_status: z.string().min(1).max(32),
-  fraud_status: z.string().max(32).optional(),
-  transaction_id: z.string().max(100).optional(),
-  payment_type: z.string().max(50).optional(),
+  fraud_status: optionalField(32),
+  transaction_id: optionalField(100),
+  payment_type: optionalField(50),
 });
+
+/** Order IDs of the notifications sent by "Test notification URL" in the Midtrans dashboard. */
+const TEST_ORDER_PREFIX = "payment_notif_test_";
 
 export type WebhookResult = { httpStatus: number; result: string };
 
@@ -414,8 +428,27 @@ export async function handleMidtransNotification(
     return { httpStatus: 400, result: "invalid_json" };
   }
   const parsed = notificationSchema.safeParse(json);
-  if (!parsed.success) return { httpStatus: 400, result: "invalid_payload" };
+  if (!parsed.success) {
+    // Names the fields (never their values), so the log says what to fix.
+    const fields = [
+      ...new Set(parsed.error.issues.map((issue) => issue.path.join("."))),
+    ].join(",");
+    return { httpStatus: 400, result: `invalid_payload:${fields}` };
+  }
   const payload: NotificationPayload = parsed.data;
+
+  // The dashboard's test is for a transaction that does not exist: answer
+  // 200 and store nothing. The signature result goes to the log, so a
+  // MIDTRANS_SERVER_KEY from another account shows up here first.
+  if (payload.order_id.startsWith(TEST_ORDER_PREFIX)) {
+    const gateway = await gatewayFor(null);
+    const signature = !gateway
+      ? "no_server_key"
+      : gateway.verifyNotification(payload)
+        ? "signature_ok"
+        : "signature_mismatch";
+    return { httpStatus: 200, result: `test:${signature}` };
+  }
 
   const order =
     (await db.query.orders.findFirst({
