@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getDb } from "@/db/client";
 import { handleMidtransRecurringNotification } from "@/server/checkout";
+import { scheduleOrderEmails } from "@/server/email";
 import { gatewayForOrder, getPaymentGateway } from "@/server/payments";
 
 /**
@@ -22,6 +23,8 @@ export async function POST(request: Request) {
       body
     );
     console.info("[midtrans] recurring notification", result.result);
+    // Invoice and product link to the buyer, notice to the seller.
+    if (result.paidOrderId) scheduleOrderEmails(result.paidOrderId);
     return NextResponse.json(
       { result: result.result },
       { status: result.httpStatus }

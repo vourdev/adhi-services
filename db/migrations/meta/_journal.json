@@ -57,6 +57,13 @@
       "when": 1791788533834,
       "tag": "0007_order_payment_account",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791884255505,
+      "tag": "0008_order_emails",
+      "breakpoints": true
     }
   ]
 }

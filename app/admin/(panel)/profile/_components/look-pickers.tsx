@@ -26,6 +26,7 @@ import {
   CARD_STYLE_LABELS,
   fontStack,
   isNamedAccent,
+  NAMED_ACCENT_HEX,
   type NamedPreset,
   PRESET_ORDER,
   PRESETS,
@@ -303,14 +304,13 @@ export function StylePicker({
   );
 }
 
-/** Light-mode colour of each named accent (mirror of app/globals.css). */
 const ACCENT_SWATCHES: Record<Accent, { label: string; color: string }> = {
-  blue: { label: "Biru", color: "#1d4fd8" },
-  emerald: { label: "Hijau", color: "#047857" },
-  rose: { label: "Merah", color: "#be123c" },
-  amber: { label: "Oranye", color: "#9c4508" },
-  violet: { label: "Ungu", color: "#6d28d9" },
-  slate: { label: "Hitam", color: "#0f172a" },
+  blue: { label: "Biru", color: NAMED_ACCENT_HEX.blue },
+  emerald: { label: "Hijau", color: NAMED_ACCENT_HEX.emerald },
+  rose: { label: "Merah", color: NAMED_ACCENT_HEX.rose },
+  amber: { label: "Oranye", color: NAMED_ACCENT_HEX.amber },
+  violet: { label: "Ungu", color: NAMED_ACCENT_HEX.violet },
+  slate: { label: "Hitam", color: NAMED_ACCENT_HEX.slate },
 };
 
 const RAINBOW =

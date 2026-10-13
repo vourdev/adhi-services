@@ -9,6 +9,7 @@ import { siteUrl } from "@/lib/env";
 import { fail, ok, type Result } from "@/lib/result";
 import { adminContext } from "@/server/admin";
 import { refreshOrderStatus, rotateOrderAccess } from "@/server/checkout";
+import { scheduleOrderEmails } from "@/server/email";
 import { gatewayForOrder } from "@/server/payments";
 
 const idSchema = z.uuid();
@@ -38,6 +39,7 @@ export async function refreshOrderAction(
   if (!gateway) return fail("Akun Midtrans pesanan ini belum bisa dihubungi.");
   try {
     const status = await refreshOrderStatus(db, gateway, order);
+    if (status === "paid") scheduleOrderEmails(order.id);
     revalidatePath("/admin/orders");
     return ok({ status });
   } catch {

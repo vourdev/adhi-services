@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getDb } from "@/db/client";
 import { handleMidtransNotification } from "@/server/checkout";
+import { scheduleOrderEmails } from "@/server/email";
 import { gatewayForOrder, getPaymentGateway } from "@/server/payments";
 
 /**
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
       console.warn("[midtrans] notification", result.httpStatus, result.result);
     else if (result.result.startsWith("test:"))
       console.info("[midtrans] dashboard test notification", result.result);
+    // Invoice and product link to the buyer, notice to the seller.
+    if (result.paidOrderId) scheduleOrderEmails(result.paidOrderId);
     return NextResponse.json(
       { result: result.result },
       { status: result.httpStatus }

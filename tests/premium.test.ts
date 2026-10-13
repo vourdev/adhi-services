@@ -720,7 +720,10 @@ describe("orders on a member's own Midtrans account", () => {
         signature_key: midtransSignature(payload, MEMBER_KEY),
       })
     );
-    assert.deepEqual(paid, { httpStatus: 200, result: "applied:paid" });
+    assert.equal(paid.httpStatus, 200);
+    assert.equal(paid.result, "applied:paid");
+    // The route sends the order emails for this id.
+    assert.match(paid.paidOrderId ?? "", /^[0-9a-f-]{36}$/);
   });
 
   test("no gateway for the order means Midtrans should retry later", async () => {

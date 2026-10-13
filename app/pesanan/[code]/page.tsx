@@ -3,6 +3,7 @@ import {
   CheckmarkCircle02Icon,
   Clock01Icon,
   Download04Icon,
+  Invoice03Icon,
   WhatsappIcon,
 } from "@hugeicons/core-free-icons";
 import { eq } from "drizzle-orm";
@@ -24,7 +25,8 @@ import {
   refreshOrderStatus,
   signedDownloadPath,
 } from "@/server/checkout";
-import { isPaymentOutcome } from "@/server/order-access";
+import { scheduleOrderEmails } from "@/server/email";
+import { isPaymentOutcome, orderAccessQuery } from "@/server/order-access";
 import { gatewayForOrder } from "@/server/payments";
 import { getVisitorLook } from "@/server/profile";
 
@@ -37,6 +39,8 @@ type Props = {
   params: Promise<{ code: string }>;
   searchParams: Promise<{
     t?: string | string[];
+    /** The key from an order email, instead of the token. */
+    k?: string | string[];
     /** What just happened at Midtrans (set by the redirect routes); only adds a note. */
     hasil?: string | string[];
   }>;
@@ -65,11 +69,15 @@ export default async function OrderPage({
   searchParams,
 }: Props): Promise<ReactNode> {
   const { code } = await params;
-  const { t, hasil } = await searchParams;
+  const { t, k, hasil } = await searchParams;
   const token = typeof t === "string" ? t : null;
+  const key = typeof k === "string" ? k : null;
   const db = getDb();
 
-  const found = await findOrderForBuyer(db, code, token);
+  const found = await findOrderForBuyer(db, code, token, {
+    key,
+    secret: authSecret(),
+  });
   if (!found) notFound();
   let { order } = found;
   const { product, delivery } = found;
@@ -93,6 +101,11 @@ export default async function OrderPage({
     getVisitorLook(db, order.profileId),
   ]);
   if (!profile || !look) notFound();
+  // Links on this page keep whichever credential opened it.
+  const access = orderAccessQuery({ token, key });
+  const orderHref = `/pesanan/${encodeURIComponent(order.code)}`;
+  // Retries an order email that failed earlier; nothing is sent twice.
+  if (order.status === "paid") scheduleOrderEmails(order.id);
 
   // After a successful payment, the delivery row exists (created by the webhook or the refresh above).
   const freshDelivery =
@@ -199,6 +212,16 @@ export default async function OrderPage({
           )
         ) : null}
 
+        {order.status === "paid" || order.status === "refunded" ? (
+          <Link
+            href={`${orderHref}/invoice?${access}`}
+            className={`${buttonClass} p-tile rounded-[var(--p-r-btn)]`}
+          >
+            <Icon icon={Invoice03Icon} className="size-5" />
+            Lihat invoice
+          </Link>
+        ) : null}
+
         {order.status === "pending" ? (
           <div className="flex flex-col gap-2">
             {transaction?.redirectUrl ? (
@@ -210,7 +233,7 @@ export default async function OrderPage({
               </a>
             ) : null}
             <Link
-              href={`/pesanan/${encodeURIComponent(order.code)}?t=${encodeURIComponent(token ?? "")}`}
+              href={`${orderHref}?${access}`}
               className={`${buttonClass} p-tile rounded-[var(--p-r-btn)]`}
             >
               Cek status lagi

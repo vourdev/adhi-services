@@ -10,6 +10,7 @@ import { isProduction, siteUrl } from "@/lib/env";
 import { checkoutInputSchema, fieldErrors } from "@/lib/validation";
 import { readVisitorFromHeaders } from "@/server/analytics/visitor";
 import { startCheckout } from "@/server/checkout";
+import { schedulePaymentLinkEmail } from "@/server/email";
 import {
   addRecentOrder,
   RECENT_ORDERS_COOKIE,
@@ -77,8 +78,10 @@ export async function checkoutAction(
 
   // Lets Midtrans' Unfinish redirect, which only names the order, bring this
   // browser back to the order page (server/order-access.ts).
-  const { orderCode, accessToken } = result.data;
+  const { orderId, orderCode, accessToken } = result.data;
   if (accessToken) {
+    // A way back to the payment if the payment page gets closed.
+    schedulePaymentLinkEmail(orderId);
     const store = await cookies();
     store.set(
       RECENT_ORDERS_COOKIE,

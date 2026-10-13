@@ -32,7 +32,7 @@ import {
   CODE_REJECTION_MESSAGES,
   countCodeUses,
 } from "./discount-codes";
-import { orderPath } from "./order-access";
+import { isOrderEmailKey, orderPath } from "./order-access";
 import {
   GatewayError,
   type GatewayStatus,
@@ -84,6 +84,7 @@ export async function startCheckout(
   nowMs = Date.now()
 ): Promise<
   Result<{
+    orderId: string;
     orderCode: string;
     redirectUrl: string;
     /** The order's secret link token; null when a repeated submit reused an earlier order. */
@@ -131,6 +132,7 @@ export async function startCheckout(
       transaction?.redirectUrl
     ) {
       return ok({
+        orderId: existing.id,
         orderCode: existing.code,
         redirectUrl: transaction.redirectUrl,
         accessToken: null,
@@ -272,6 +274,7 @@ export async function startCheckout(
   );
 
   return ok({
+    orderId: order.id,
     orderCode: order.code,
     redirectUrl: payment.redirectUrl,
     accessToken: token,
@@ -401,7 +404,12 @@ const notificationSchema = z.object({
 /** Order IDs of the notifications sent by "Test notification URL" in the Midtrans dashboard. */
 const TEST_ORDER_PREFIX = "payment_notif_test_";
 
-export type WebhookResult = { httpStatus: number; result: string };
+export type WebhookResult = {
+  httpStatus: number;
+  result: string;
+  /** Set when the order is paid after this delivery, so its emails can go out. */
+  paidOrderId?: string;
+};
 
 /**
  * Handles a Midtrans HTTP notification.
@@ -523,7 +531,8 @@ export async function handleMidtransNotification(
     console.error("[webhook] rejected", order.code, applied.reason);
     return finish(`rejected:${applied.reason}`);
   }
-  return finish(`${applied.outcome}:${applied.status}`);
+  const done = await finish(`${applied.outcome}:${applied.status}`);
+  return applied.status === "paid" ? { ...done, paidOrderId: order.id } : done;
 }
 
 /**
@@ -555,13 +564,22 @@ export async function handleMidtransRecurringNotification(
 export async function findOrderForBuyer(
   db: Database,
   code: string,
-  token: string | null
+  token: string | null,
+  /** The key from an order email (?k=), checked with AUTH_SECRET. */
+  emailKey?: { key: string | null; secret: string }
 ) {
-  if (!token || token.length > 200) return null;
+  const key = emailKey?.key ?? null;
+  if ((!token || token.length > 200) && (!key || key.length > 200)) return null;
   const order = await db.query.orders.findFirst({
     where: eq(orders.code, code),
   });
-  if (!order || !safeEqual(order.accessTokenHash, sha256(token))) return null;
+  if (!order) return null;
+  const allowed = token
+    ? safeEqual(order.accessTokenHash, sha256(token))
+    : key !== null &&
+      emailKey !== undefined &&
+      isOrderEmailKey(key, order.code, order.accessTokenHash, emailKey.secret);
+  if (!allowed) return null;
   const [product, delivery, profile] = await Promise.all([
     db.query.products.findFirst({ where: eq(products.id, order.productId) }),
     db.query.digitalDeliveries.findFirst({

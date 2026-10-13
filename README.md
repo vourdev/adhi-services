@@ -63,6 +63,8 @@ browser.
 | `STORAGE_DIR`            | no                    | `./storage` by default (uploaded images and private product files).                                                                                                                                                                       |
 | `MIDTRANS_SERVER_KEY`    | for direct checkout   | Midtrans server key (`SB-Mid-server-...` for sandbox).                                                                                                                                                                                    |
 | `MIDTRANS_IS_PRODUCTION` | no                    | `true` for live transactions. Anything else means sandbox.                                                                                                                                                                                |
+| `RESEND_API_KEY`         | for order emails      | Set by the Vercel Resend integration.                                                                                                                                                                                                     |
+| `EMAIL_FROM`             | for order emails      | Sender address on a domain verified in Resend, e.g. `pesanan@domain-anda.id`. Order emails stay off until this and `RESEND_API_KEY` are set.                                                                                              |
 | `MIDTRANS_CLIENT_KEY`    | no                    | Not used: checkout uses Snap redirect mode, which needs only the server key.                                                                                                                                                              |
 | `ADMIN_*`                | setup only            | Owner account values for `npm run setup`.                                                                                                                                                                                                 |
 
@@ -115,6 +117,7 @@ browser.
 | `/{username}/{slug}`                                 | Product page (drafts visible only to the signed-in owner)                                            |
 | `/{username}/{slug}/checkout`                        | Direct-checkout form (with discount code) → Midtrans Snap                                            |
 | `/pesanan/{code}?t={token}`                          | Buyer's order page: status, download (`&hasil=` adds a note after an unfinished or failed payment)   |
+| `/pesanan/{code}/invoice?t=` (or `?k=`)              | Printable invoice (print or save as PDF from the browser)                                            |
 | `/pembayaran/{selesai,belum-selesai,gagal}`          | Payment result for a browser that does not hold the order's link                                     |
 | `/go/l/{id}`, `/go/p/{id}`, `/go/wa/{id}`            | Tracked redirects: link click, product card click, WhatsApp hand-off (`?kode=` adds a discount code) |
 | `/api/events`                                        | Page-view beacon (profile, product, checkout)                                                        |
@@ -216,6 +219,16 @@ to visitors.
    download link signed with `AUTH_SECRET`, valid 15 minutes, max 10
    downloads per order. Product files live in `storage/private/` with no public
    URL.
+6. Order emails (Resend, `server/email/`): the buyer gets a payment link
+   right after checkout, then the invoice with a "Buka produk" button once
+   the order is paid; the seller gets a "Pesanan baru" notice. Emails link to
+   the order page with `?k=`, a key derived from the order's token hash, so
+   issuing a new order link also retires emailed ones. Each email claims a
+   timestamp on the order before sending and gives it back on failure, so it
+   goes out once; the webhook and the order page both trigger delivery, which
+   doubles as the retry. Files are never attached (size limits, and an
+   attachment cannot be revoked); the button leads to the download-limited
+   order page.
 
 Sandbox was tested end to end on 2026-10-11: order → Snap → BCA virtual
 account paid in the Midtrans simulator → Status API `settlement` → order paid

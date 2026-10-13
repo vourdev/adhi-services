@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import { orders, profiles, users } from "@/db/schema";
-import { isOrderCode, safeEqual, sha256 } from "@/lib/security";
+import { hmacSha256, isOrderCode, safeEqual, sha256 } from "@/lib/security";
 
 /**
  * How a buyer gets back to their order page. The order page needs the
@@ -28,6 +28,41 @@ export function orderPath(
 ): string {
   const note = outcome && outcome !== "selesai" ? `&hasil=${outcome}` : "";
   return `/pesanan/${encodeURIComponent(code)}?t=${encodeURIComponent(token)}${note}`;
+}
+
+// ----------------------------------------------------------- email links
+
+/**
+ * The order link in emails. Only a hash of the order's token is stored, so
+ * a server-side email cannot carry the token itself; it carries this key,
+ * derived from that hash. Issuing a new order link (which replaces the
+ * hash) therefore also retires every link already emailed.
+ */
+export function orderEmailKey(
+  code: string,
+  accessTokenHash: string,
+  secret: string
+): string {
+  return hmacSha256(secret, `order-email:${code}:${accessTokenHash}`);
+}
+
+export function isOrderEmailKey(
+  key: string,
+  code: string,
+  accessTokenHash: string,
+  secret: string
+): boolean {
+  return safeEqual(orderEmailKey(code, accessTokenHash, secret), key);
+}
+
+/** Query string that opens an order page: the buyer's token, or an email key. */
+export function orderAccessQuery(access: {
+  token?: string | null;
+  key?: string | null;
+}): string {
+  return access.token
+    ? `t=${encodeURIComponent(access.token)}`
+    : `k=${encodeURIComponent(access.key ?? "")}`;
 }
 
 // ------------------------------------------------------------ the cookie

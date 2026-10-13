@@ -100,4 +100,26 @@ export function midtransConfig(): MidtransConfig | null {
   return { serverKey, isProduction: read("MIDTRANS_IS_PRODUCTION") === "true" };
 }
 
+export type EmailConfig = {
+  apiKey: string;
+  /** Bare address on a domain verified in Resend, e.g. pesanan@domain-anda.id. */
+  fromAddress: string;
+};
+
+/**
+ * Order emails (Resend). Off until both RESEND_API_KEY (set by the Vercel
+ * Resend integration) and EMAIL_FROM are configured.
+ */
+export function emailConfig(): EmailConfig | null {
+  const apiKey = read("RESEND_API_KEY");
+  const fromAddress = read("EMAIL_FROM");
+  if (
+    !apiKey ||
+    !fromAddress ||
+    !/^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(fromAddress)
+  )
+    return null;
+  return { apiKey, fromAddress };
+}
+
 export const isProduction = process.env.NODE_ENV === "production";

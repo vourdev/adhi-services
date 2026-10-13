@@ -154,6 +154,22 @@ export function isNamedAccent(value: string): value is Accent {
   return (ACCENTS as readonly string[]).includes(value);
 }
 
+/** Light-mode colour of each named accent (mirror of app/globals.css). */
+export const NAMED_ACCENT_HEX: Record<Accent, string> = {
+  blue: "#1d4fd8",
+  emerald: "#047857",
+  rose: "#be123c",
+  amber: "#9c4508",
+  violet: "#6d28d9",
+  slate: "#0f172a",
+};
+
+/** The accent as one hex colour, for places without the stylesheet (emails). */
+export function accentHex(value: unknown): string {
+  const accent = normalizeAccent(value);
+  return isNamedAccent(accent) ? NAMED_ACCENT_HEX[accent] : accent;
+}
+
 /** A stored accent as rendered: a named accent, a normalized hex, or blue for anything else. */
 export function normalizeAccent(value: unknown): AccentValue {
   if (typeof value !== "string") return "blue";

@@ -315,6 +315,16 @@ export const orders = sqliteTable(
     /** One per checkout form render, so a double submit reuses the same order. */
     idempotencyKey: text("idempotency_key").unique(),
     paidAt: integer("paid_at", { mode: "timestamp_ms" }),
+    /**
+     * When each order email went out (server/email/order-emails.ts). Set
+     * before sending and cleared again if the send fails, so every email
+     * goes out once however many times the payment is confirmed.
+     */
+    paymentLinkEmailedAt: integer("payment_link_emailed_at", {
+      mode: "timestamp_ms",
+    }),
+    receiptEmailedAt: integer("receipt_emailed_at", { mode: "timestamp_ms" }),
+    sellerEmailedAt: integer("seller_emailed_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

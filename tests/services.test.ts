@@ -641,10 +641,13 @@ describe("direct checkout, webhook and delivery", () => {
       () => gateway,
       notification("settlement", "25000.00", { transaction_id: "t1" })
     );
-    assert.deepEqual(paid, { httpStatus: 200, result: "applied:paid" });
-
     const order = await db.query.orders.findFirst({
       where: eq(orders.code, orderCode),
+    });
+    assert.deepEqual(paid, {
+      httpStatus: 200,
+      result: "applied:paid",
+      paidOrderId: order?.id,
     });
     assert.equal(order?.status, "paid");
     assert.ok(order?.paidAt);
