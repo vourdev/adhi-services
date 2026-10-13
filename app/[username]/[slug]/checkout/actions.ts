@@ -1,14 +1,20 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getDb } from "@/db/client";
 import { products } from "@/db/schema";
-import { siteUrl } from "@/lib/env";
+import { isProduction, siteUrl } from "@/lib/env";
 import { checkoutInputSchema, fieldErrors } from "@/lib/validation";
 import { readVisitorFromHeaders } from "@/server/analytics/visitor";
 import { startCheckout } from "@/server/checkout";
+import {
+  addRecentOrder,
+  RECENT_ORDERS_COOKIE,
+  RECENT_ORDERS_MAX_AGE_S,
+} from "@/server/order-access";
 import { checkoutGatewayForProfile } from "@/server/payments";
 import { allowAttempt } from "@/server/rate-limit";
 import { clientKey } from "@/server/session";
@@ -68,5 +74,27 @@ export async function checkoutAction(
     notificationUrl: route.notificationUrl,
   });
   if (!result.ok) return { error: result.error };
+
+  // Lets Midtrans' Unfinish redirect, which only names the order, bring this
+  // browser back to the order page (server/order-access.ts).
+  const { orderCode, accessToken } = result.data;
+  if (accessToken) {
+    const store = await cookies();
+    store.set(
+      RECENT_ORDERS_COOKIE,
+      addRecentOrder(
+        store.get(RECENT_ORDERS_COOKIE)?.value,
+        orderCode,
+        accessToken
+      ),
+      {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        path: "/",
+        maxAge: RECENT_ORDERS_MAX_AGE_S,
+      }
+    );
+  }
   redirect(result.data.redirectUrl);
 }

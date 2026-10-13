@@ -83,7 +83,12 @@ export function createMidtransGateway(
         },
         // 3-D Secure for card payments.
         credit_card: { secure: true },
-        callbacks: { finish: input.finishUrl },
+        // Per order, so the buyer returns with the order's secret link. Only
+        // the Unfinish redirect is left to the dashboard (no per-order field).
+        callbacks: {
+          finish: input.finishUrl,
+          ...(input.errorUrl ? { error: input.errorUrl } : {}),
+        },
       };
 
       let response: Response;

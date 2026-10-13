@@ -32,6 +32,7 @@ import {
   CODE_REJECTION_MESSAGES,
   countCodeUses,
 } from "./discount-codes";
+import { orderPath } from "./order-access";
 import {
   GatewayError,
   type GatewayStatus,
@@ -64,7 +65,7 @@ export function orderAccessUrl(
   code: string,
   token: string
 ): string {
-  return `${siteUrl}/pesanan/${encodeURIComponent(code)}?t=${encodeURIComponent(token)}`;
+  return `${siteUrl}${orderPath(code, token)}`;
 }
 
 // --------------------------------------------------------------- checkout
@@ -81,7 +82,14 @@ export async function startCheckout(
     notificationUrl?: string | null;
   },
   nowMs = Date.now()
-): Promise<Result<{ orderCode: string; redirectUrl: string }>> {
+): Promise<
+  Result<{
+    orderCode: string;
+    redirectUrl: string;
+    /** The order's secret link token; null when a repeated submit reused an earlier order. */
+    accessToken: string | null;
+  }>
+> {
   const [row] = await db
     .select({
       product: products,
@@ -125,6 +133,7 @@ export async function startCheckout(
       return ok({
         orderCode: existing.code,
         redirectUrl: transaction.redirectUrl,
+        accessToken: null,
       });
     }
     return fail(
@@ -227,6 +236,7 @@ export async function startCheckout(
         phone: input.buyerPhone,
       },
       finishUrl: orderAccessUrl(context.siteUrl, order.code, token),
+      errorUrl: `${context.siteUrl}${orderPath(order.code, token, "gagal")}`,
       notificationUrl: context.notificationUrl ?? null,
     });
   } catch (error) {
@@ -261,7 +271,11 @@ export async function startCheckout(
     context.visitor
   );
 
-  return ok({ orderCode: order.code, redirectUrl: payment.redirectUrl });
+  return ok({
+    orderCode: order.code,
+    redirectUrl: payment.redirectUrl,
+    accessToken: token,
+  });
 }
 
 // ------------------------------------------------------------ status sync
@@ -477,6 +491,29 @@ export async function handleMidtransNotification(
     return finish(`rejected:${applied.reason}`);
   }
   return finish(`${applied.outcome}:${applied.status}`);
+}
+
+/**
+ * Midtrans' recurring-payment notification URL. This site sells one-off
+ * payments only, so nothing should arrive here. A charge notification still
+ * goes through the normal handler (signature checked, unknown orders
+ * ignored); anything else is acknowledged with 200 so Midtrans stops
+ * retrying.
+ */
+export async function handleMidtransRecurringNotification(
+  db: Database,
+  gatewayFor: Parameters<typeof handleMidtransNotification>[1],
+  rawBody: string
+): Promise<WebhookResult> {
+  let json: unknown;
+  try {
+    json = JSON.parse(rawBody);
+  } catch {
+    return { httpStatus: 400, result: "invalid_json" };
+  }
+  if (notificationSchema.safeParse(json).success)
+    return handleMidtransNotification(db, gatewayFor, rawBody);
+  return { httpStatus: 200, result: "ignored:not_a_payment" };
 }
 
 // ------------------------------------------------------------ buyer views

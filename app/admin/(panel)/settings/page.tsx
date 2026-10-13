@@ -22,8 +22,8 @@ import { IGNORE_COOKIE } from "@/server/analytics/visitor";
 import { countActiveSessions } from "@/server/auth";
 import { paymentsStatus, savedServerKeyHint } from "@/server/payments";
 
-import { CopyButton } from "../../_components/copy-button";
 import { PageHeader } from "../../_components/page-header";
+import { MidtransDashboardUrls } from "./_components/midtrans-urls";
 import { PublicSettingsForm } from "./_components/public-settings-form";
 import {
   ChangePasswordForm,
@@ -132,6 +132,15 @@ export default async function SettingsPage(): Promise<ReactNode> {
           ) : (
             <p className="text-muted-foreground">{problem}</p>
           )}
+          {/* Members on the platform account have no Midtrans dashboard of their own. */}
+          {payments.account === "custom" && !isSuperAdmin ? (
+            <div className="border-t pt-3">
+              <MidtransDashboardUrls
+                siteUrl={siteUrl()}
+                publicSite={hasPublicSiteUrl()}
+              />
+            </div>
+          ) : null}
           {isSuperAdmin ? <PlatformPaymentsAdmin /> : null}
         </CardContent>
       </Card>
@@ -161,7 +170,6 @@ export default async function SettingsPage(): Promise<ReactNode> {
 /** Server configuration for the platform account. Shown to the super admin only. */
 function PlatformPaymentsAdmin(): ReactNode {
   const platform = paymentsStatus();
-  const webhookUrl = `${siteUrl()}/api/payments/midtrans`;
   return (
     <div className="flex flex-col gap-3 border-t pt-3">
       <span className="text-xs font-medium text-muted-foreground">
@@ -196,23 +204,10 @@ function PlatformPaymentsAdmin(): ReactNode {
           Midtrans mereka sendiri.
         </p>
       ) : null}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-muted-foreground">
-          Notification URL untuk dashboard Midtrans platform
-        </span>
-        <div className="flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-md bg-muted px-2 py-1.5 text-xs">
-            {webhookUrl}
-          </code>
-          <CopyButton value={webhookUrl} label="Salin" />
-        </div>
-        {!hasPublicSiteUrl() ? (
-          <span className="text-xs text-muted-foreground">
-            Midtrans hanya bisa mengirim ke domain https publik, bukan
-            localhost.
-          </span>
-        ) : null}
-      </div>
+      <MidtransDashboardUrls
+        siteUrl={siteUrl()}
+        publicSite={hasPublicSiteUrl()}
+      />
     </div>
   );
 }

@@ -75,9 +75,24 @@ browser.
    card appears once it is set), and is never shown on the profile. It is not
    in the CV, so it has not been filled in.
 3. **Midtrans** (only for direct checkout):
-   - Dashboard Midtrans → Settings → Payment → Notification URL:
-     `{SITE_URL}/api/payments/midtrans` (Settings in this dashboard shows the
-     exact URL with a copy button).
+   - Dashboard Midtrans → Settings → Payment. Settings in this dashboard lists
+     these URLs with copy buttons:
+
+     | Midtrans field                     | URL                                                |
+     | ---------------------------------- | -------------------------------------------------- |
+     | Finish Redirect URL                | `{SITE_URL}/api/payments/midtrans/finish`          |
+     | Unfinish Redirect URL              | `{SITE_URL}/api/payments/midtrans/unfinish`        |
+     | Error Redirect URL                 | `{SITE_URL}/api/payments/midtrans/error`           |
+     | Payment notification URL           | `{SITE_URL}/api/payments/midtrans`                 |
+     | Recurring payment notification URL | `{SITE_URL}/api/payments/midtrans/recurring`       |
+     | Account linking notification URL   | `{SITE_URL}/api/payments/midtrans/account-linking` |
+
+     Every order already sends its own finish and error redirect and its
+     notification URL (`X-Override-Notification`), so only Unfinish strictly
+     needs the dashboard. If another shop shares the Midtrans account, its
+     orders follow the dashboard values: changing them moves its redirects and
+     notifications here (they are acknowledged and ignored).
+
    - Premium members can take payments on their own Midtrans account
      (Settings → "Akun Midtrans"). Set `ENCRYPTION_KEY` first. Their orders
      send notifications to the same URL per transaction, so they configure
@@ -93,21 +108,24 @@ browser.
 
 ### Routes
 
-| Route                                     | Purpose                                                                                              |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `/`                                       | Redirects to the owner's profile                                                                     |
-| `/{username}`                             | Public profile                                                                                       |
-| `/{username}/{slug}`                      | Product page (drafts visible only to the signed-in owner)                                            |
-| `/{username}/{slug}/checkout`             | Direct-checkout form (with discount code) → Midtrans Snap                                            |
-| `/pesanan/{code}?t={token}`               | Buyer's order page: status, download                                                                 |
-| `/go/l/{id}`, `/go/p/{id}`, `/go/wa/{id}` | Tracked redirects: link click, product card click, WhatsApp hand-off (`?kode=` adds a discount code) |
-| `/api/events`                             | Page-view beacon (profile, product, checkout)                                                        |
-| `/api/payments/midtrans`                  | Midtrans HTTP notification (webhook)                                                                 |
-| `/api/download/{id}?exp&sig`              | Signed, expiring download for a paid order                                                           |
-| `/api/admin/uploads`                      | Owner-only image and product-file upload                                                             |
-| `/media/...`                              | Uploaded images (re-encoded WebP)                                                                    |
-| `/admin/...`                              | Dashboard (sign-in at `/admin/login`)                                                                |
-| `/privasi`                                | What is recorded and why                                                                             |
+| Route                                                | Purpose                                                                                              |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `/`                                                  | Redirects to the owner's profile                                                                     |
+| `/{username}`                                        | Public profile                                                                                       |
+| `/{username}/{slug}`                                 | Product page (drafts visible only to the signed-in owner)                                            |
+| `/{username}/{slug}/checkout`                        | Direct-checkout form (with discount code) → Midtrans Snap                                            |
+| `/pesanan/{code}?t={token}`                          | Buyer's order page: status, download (`&hasil=` adds a note after an unfinished or failed payment)   |
+| `/pembayaran/{selesai,belum-selesai,gagal}`          | Payment result for a browser that does not hold the order's link                                     |
+| `/go/l/{id}`, `/go/p/{id}`, `/go/wa/{id}`            | Tracked redirects: link click, product card click, WhatsApp hand-off (`?kode=` adds a discount code) |
+| `/api/events`                                        | Page-view beacon (profile, product, checkout)                                                        |
+| `/api/payments/midtrans`                             | Midtrans HTTP notification (webhook)                                                                 |
+| `/api/payments/midtrans/{finish,unfinish,error}`     | Midtrans browser redirects (GET or POST) → order page or `/pembayaran/...`                           |
+| `/api/payments/midtrans/{recurring,account-linking}` | Midtrans notifications for features not used here: verified or acknowledged, nothing stored          |
+| `/api/download/{id}?exp&sig`                         | Signed, expiring download for a paid order                                                           |
+| `/api/admin/uploads`                                 | Owner-only image and product-file upload                                                             |
+| `/media/...`                                         | Uploaded images (re-encoded WebP)                                                                    |
+| `/admin/...`                                         | Dashboard (sign-in at `/admin/login`)                                                                |
+| `/privasi`                                           | What is recorded and why                                                                             |
 
 ### Code layout
 
@@ -178,7 +196,12 @@ to visitors.
    `orders` row (pending) with a fresh access token, and requests a Snap
    transaction. The form carries an idempotency key, so a double submit reuses
    the same order. Checkout attempts are rate limited per client.
-2. The buyer pays on Midtrans and returns to `/pesanan/{code}?t={token}`.
+2. The buyer pays on Midtrans and returns to `/pesanan/{code}?t={token}`
+   (finish and error redirects are set per order). Midtrans' Unfinish redirect
+   only names the order, so checkout also stores the order link in an
+   HttpOnly cookie (`lb_orders`, last five orders, 7 days); the redirect
+   routes use it to send the buyer back to their order page, or show
+   `/pembayaran/...` without any order details when this browser lacks it.
 3. The order becomes **paid only from a status the server verified**:
    - webhook: signature `SHA512(order_id + status_code + gross_amount + ServerKey)`
      checked in constant time, then the status re-fetched from the Status API

@@ -10,7 +10,10 @@ export type CreateTransactionInput = {
   amount: number;
   item: { id: string; name: string };
   buyer: { name: string; email: string; phone: string | null };
+  /** Where the buyer lands after paying; the dashboard's Finish URL is only a fallback. */
   finishUrl: string;
+  /** Where the buyer lands when the payment fails at the provider. */
+  errorUrl?: string | null;
   /** Sends this transaction's notifications here instead of the URL set in the provider's dashboard. */
   notificationUrl?: string | null;
 };

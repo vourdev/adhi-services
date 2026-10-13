@@ -24,6 +24,7 @@ import {
   refreshOrderStatus,
   signedDownloadPath,
 } from "@/server/checkout";
+import { isPaymentOutcome } from "@/server/order-access";
 import { gatewayForOrder } from "@/server/payments";
 import { getVisitorLook } from "@/server/profile";
 
@@ -34,24 +35,37 @@ export const metadata: Metadata = {
 
 type Props = {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ t?: string | string[] }>;
+  searchParams: Promise<{
+    t?: string | string[];
+    /** What just happened at Midtrans (set by the redirect routes); only adds a note. */
+    hasil?: string | string[];
+  }>;
 };
+
+/** Notes for a buyer coming back from Midtrans without a finished payment. */
+const RETURN_NOTES = {
+  "belum-selesai":
+    "Pembayaran belum diselesaikan. Lanjutkan sebelum batas waktunya, atau pilih metode pembayaran lain.",
+  gagal:
+    "Midtrans tidak bisa memproses pembayaran tadi. Coba lagi dengan metode yang sama atau metode lain.",
+} as const;
 
 const buttonClass =
   "p-press flex h-12 w-full items-center justify-center gap-2 px-6 text-[15px] font-semibold";
 
 /**
- * The buyer's order page, reached from Midtrans' finish redirect. Access
- * needs the order's secret token (?t=). The status shown here comes from
- * the database, refreshed from the Midtrans Status API while pending; the
- * redirect's own query parameters are never trusted.
+ * The buyer's order page, reached from Midtrans' redirects (directly, or
+ * through /api/payments/midtrans/*). Access needs the order's secret token
+ * (?t=). The status shown here comes from the database, refreshed from the
+ * Midtrans Status API while pending; the redirect's own query parameters
+ * are never trusted.
  */
 export default async function OrderPage({
   params,
   searchParams,
 }: Props): Promise<ReactNode> {
   const { code } = await params;
-  const { t } = await searchParams;
+  const { t, hasil } = await searchParams;
   const token = typeof t === "string" ? t : null;
   const db = getDb();
 
@@ -107,6 +121,22 @@ export default async function OrderPage({
         className="mx-auto flex w-full max-w-[34rem] flex-col gap-5 px-4 pt-10 pb-12"
       >
         <StatusHeader status={order.status} />
+
+        {isPaymentOutcome(hasil) &&
+        hasil !== "selesai" &&
+        order.status !== "paid" &&
+        order.status !== "refunded" ? (
+          <p
+            role="status"
+            className="p-card flex gap-3 px-4 py-3.5 text-sm leading-relaxed"
+          >
+            <Icon
+              icon={Alert02Icon}
+              className="mt-0.5 size-[18px] shrink-0 text-p-accent-ink"
+            />
+            {RETURN_NOTES[hasil]}
+          </p>
+        ) : null}
 
         <section aria-label="Detail pesanan" className="p-card p-5">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">

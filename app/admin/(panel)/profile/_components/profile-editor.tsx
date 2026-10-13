@@ -74,7 +74,9 @@ export function ProfileEditor({
     startTransition(async () => {
       // Named presets come from the stylesheet; theme JSON is only kept for "custom".
       const result = await updateProfileAction(
-        output.themePreset === "custom" ? output : { ...output, customTheme: null }
+        output.themePreset === "custom"
+          ? output
+          : { ...output, customTheme: null }
       );
       if (!result.ok) {
         for (const [field, message] of Object.entries(result.fieldErrors ?? {}))

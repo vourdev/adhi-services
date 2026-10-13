@@ -574,7 +574,12 @@ describe("direct checkout, webhook and delivery", () => {
       siteUrl: "https://example.id",
       visitor: visitor("buyer"),
     });
-    assert.deepEqual(second, first);
+    assert.ok(first.ok && second.ok);
+    assert.equal(second.data.orderCode, first.data.orderCode);
+    assert.equal(second.data.redirectUrl, first.data.redirectUrl);
+    // The secret link is handed out once; a repeated submit cannot re-issue it.
+    assert.match(first.data.accessToken ?? "", /^[\w-]{40,}$/);
+    assert.equal(second.data.accessToken, null);
 
     orderCode = first.ok ? first.data.orderCode : "";
     const order = await db.query.orders.findFirst({

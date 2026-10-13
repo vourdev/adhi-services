@@ -10,6 +10,7 @@ import {
   midtransConfig,
   siteUrl,
 } from "@/lib/env";
+import { midtransUrls } from "@/lib/midtrans-urls";
 
 import {
   loadPaymentProfile,
@@ -58,9 +59,10 @@ export function paymentsStatusForProfile(
 
 /**
  * The gateway for a new order on this profile, or null when checkout is not
- * available. Payments on a member's own account send their notifications
- * to this site directly (X-Override-Notification), so the member does not
- * have to configure anything in their Midtrans dashboard.
+ * available. Every order sends its notifications to this site directly
+ * (X-Override-Notification), on the platform account and on a member's own
+ * account alike, so a Midtrans dashboard pointing elsewhere (or nowhere)
+ * does not lose payments.
  */
 export function checkoutGateway(
   settings: ProfilePaymentSettings,
@@ -79,10 +81,9 @@ export function checkoutGateway(
   return {
     gateway: createMidtransGateway(config),
     account: status.account,
-    notificationUrl:
-      status.account === "custom" && hasPublicSiteUrl()
-        ? `${siteUrl()}/api/payments/midtrans`
-        : null,
+    notificationUrl: hasPublicSiteUrl()
+      ? midtransUrls(siteUrl()).notification
+      : null,
   };
 }
 

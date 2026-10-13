@@ -105,13 +105,20 @@ export function safeEqual(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+const ORDER_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
 /** Readable order number without ambiguous characters, e.g. LB-7K3Q9X2M. */
 export function generateOrderCode(): string {
-  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   const bytes = randomBytes(8);
   let code = "";
-  for (const byte of bytes) code += alphabet[byte % alphabet.length];
+  for (const byte of bytes)
+    code += ORDER_CODE_ALPHABET[byte % ORDER_CODE_ALPHABET.length];
   return `LB-${code}`;
+}
+
+/** True for numbers made by generateOrderCode; anything else is not one of this site's orders. */
+export function isOrderCode(value: string): boolean {
+  return /^LB-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/.test(value);
 }
 
 /** Signs `payload` with an expiry. Returns query parameters for a URL. */
