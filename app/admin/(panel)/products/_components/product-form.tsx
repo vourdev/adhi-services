@@ -60,7 +60,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { Accent, ProfileTheme } from "@/lib/domain";
+import { type ProfileLook, surfaceAttributes } from "@/lib/profile-look";
 import { PRODUCT_TYPE_LABELS, PRODUCT_TYPES } from "@/lib/domain";
 import { formatBytes, formatRupiah } from "@/lib/format";
 import {
@@ -88,8 +88,8 @@ type Props = {
   initialValues: ProductFormValues;
   username: string;
   siteUrl: string;
-  profileTheme: ProfileTheme;
-  profileAccent: Accent;
+  /** The profile's look, so the card preview matches the public page. */
+  profileLook: ProfileLook;
   profileWhatsappSet: boolean;
   paymentsReady: boolean;
   /** Why direct checkout is off, already worded for this owner. */
@@ -108,8 +108,7 @@ export function ProductForm({
   initialValues,
   username,
   siteUrl,
-  profileTheme,
-  profileAccent,
+  profileLook,
   profileWhatsappSet,
   paymentsReady,
   paymentsProblem,
@@ -723,8 +722,7 @@ export function ProductForm({
           <CardContent>
             <div
               className="profile-surface min-h-0 rounded-xl p-3"
-              data-theme={profileTheme}
-              data-accent={profileAccent}
+              {...surfaceAttributes(profileLook)}
             >
               <div className="pointer-events-none" aria-hidden>
                 <ProductBlock

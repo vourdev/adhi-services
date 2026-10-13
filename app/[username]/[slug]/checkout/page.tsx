@@ -10,6 +10,7 @@ import { MediaImage } from "@/components/profile/media-image";
 import { ProfileSurface } from "@/components/profile/profile-view";
 import { ViewBeacon } from "@/components/profile/view-beacon";
 import { getDb } from "@/db/client";
+import { lookFromProfile } from "@/lib/profile-look";
 import { hasUsableCodes } from "@/server/discount-codes";
 import { loadProduct } from "@/server/public-data";
 
@@ -39,11 +40,7 @@ export default async function CheckoutPage({
     paymentsReady && (await hasUsableCodes(getDb(), profile.id, product.id));
 
   return (
-    <ProfileSurface
-      theme={profile.theme}
-      accent={profile.accent}
-      customTheme={profile.customTheme}
-    >
+    <ProfileSurface look={lookFromProfile(profile)}>
       <div className="mx-auto flex w-full max-w-[34rem] flex-col px-4 pt-4 pb-12">
         <Link
           href={productPath}
@@ -58,7 +55,7 @@ export default async function CheckoutPage({
 
           <section
             aria-label="Ringkasan pesanan"
-            className="flex items-center gap-3 rounded-2xl bg-p-card p-3 shadow-[0_1px_3px_rgb(17_24_39/0.08)] ring-1 ring-p-line"
+            className="p-card flex items-center gap-3 p-3"
           >
             {product.coverUrl ? (
               <MediaImage
@@ -66,7 +63,7 @@ export default async function CheckoutPage({
                 alt=""
                 width={128}
                 height={128}
-                className="size-16 shrink-0 rounded-xl object-cover"
+                className="size-16 shrink-0 rounded-[var(--p-r-media)] object-cover"
               />
             ) : null}
             <div className="min-w-0 flex-1">
@@ -87,7 +84,7 @@ export default async function CheckoutPage({
               discountEnabled={discountEnabled}
             />
           ) : (
-            <p className="rounded-2xl bg-p-card px-4 py-6 text-center text-sm text-p-muted ring-1 ring-p-line">
+            <p className="p-card px-4 py-6 text-center text-sm text-p-muted">
               Pembayaran online belum tersedia. Silakan hubungi penjual.
             </p>
           )}

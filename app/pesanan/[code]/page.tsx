@@ -25,6 +25,7 @@ import {
   signedDownloadPath,
 } from "@/server/checkout";
 import { gatewayForOrder } from "@/server/payments";
+import { getVisitorLook } from "@/server/profile";
 
 export const metadata: Metadata = {
   title: "Status pesanan",
@@ -37,7 +38,7 @@ type Props = {
 };
 
 const buttonClass =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-transform active:scale-[0.98] motion-reduce:active:scale-100";
+  "p-press flex h-12 w-full items-center justify-center gap-2 px-6 text-[15px] font-semibold";
 
 /**
  * The buyer's order page, reached from Midtrans' finish redirect. Access
@@ -70,13 +71,14 @@ export default async function OrderPage({
     }
   }
 
-  const [transaction, profile] = await Promise.all([
+  const [transaction, profile, look] = await Promise.all([
     db.query.paymentTransactions.findFirst({
       where: eq(paymentTransactions.orderId, order.id),
     }),
     db.query.profiles.findFirst({ where: eq(profiles.id, order.profileId) }),
+    getVisitorLook(db, order.profileId),
   ]);
-  if (!profile) notFound();
+  if (!profile || !look) notFound();
 
   // After a successful payment, the delivery row exists (created by the webhook or the refresh above).
   const freshDelivery =
@@ -99,17 +101,14 @@ export default async function OrderPage({
       : null;
 
   return (
-    <ProfileSurface theme={profile.theme} accent={profile.accent}>
+    <ProfileSurface look={look}>
       <main
         id="konten"
         className="mx-auto flex w-full max-w-[34rem] flex-col gap-5 px-4 pt-10 pb-12"
       >
         <StatusHeader status={order.status} />
 
-        <section
-          aria-label="Detail pesanan"
-          className="rounded-2xl bg-p-card p-5 shadow-[0_1px_3px_rgb(17_24_39/0.08)] ring-1 ring-p-line"
-        >
+        <section aria-label="Detail pesanan" className="p-card p-5">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
             <dt className="text-p-muted">Nomor pesanan</dt>
             <dd className="text-right font-mono font-medium">{order.code}</dd>
@@ -146,7 +145,7 @@ export default async function OrderPage({
               <a
                 href={downloadPath}
                 rel="nofollow"
-                className={`${buttonClass} bg-p-accent text-p-accent-fg`}
+                className={`${buttonClass} p-btn bg-p-accent text-p-accent-fg`}
               >
                 <Icon icon={Download04Icon} className="size-5" />
                 {product.deliveryType === "link"
@@ -163,7 +162,7 @@ export default async function OrderPage({
               </p>
             </div>
           ) : (
-            <p className="rounded-2xl bg-p-card px-4 py-3 text-sm text-p-muted ring-1 ring-p-line">
+            <p className="p-card px-4 py-3 text-sm text-p-muted">
               Pembayaran sudah diterima. Penjual akan menghubungi Anda untuk
               langkah berikutnya.
             </p>
@@ -175,14 +174,14 @@ export default async function OrderPage({
             {transaction?.redirectUrl ? (
               <a
                 href={transaction.redirectUrl}
-                className={`${buttonClass} bg-p-accent text-p-accent-fg`}
+                className={`${buttonClass} p-btn bg-p-accent text-p-accent-fg`}
               >
                 Lanjutkan pembayaran
               </a>
             ) : null}
             <Link
               href={`/pesanan/${encodeURIComponent(order.code)}?t=${encodeURIComponent(token ?? "")}`}
-              className={`${buttonClass} bg-p-card ring-1 ring-p-line`}
+              className={`${buttonClass} p-tile rounded-[var(--p-r-btn)]`}
             >
               Cek status lagi
             </Link>
@@ -194,7 +193,7 @@ export default async function OrderPage({
         order.status === "cancelled" ? (
           <Link
             href={`/${profile.username}/${product.slug}`}
-            className={`${buttonClass} bg-p-accent text-p-accent-fg`}
+            className={`${buttonClass} p-btn bg-p-accent text-p-accent-fg`}
           >
             Pesan ulang
           </Link>
@@ -226,7 +225,7 @@ function StatusHeader({
       <header className="flex flex-col items-center gap-2 text-center">
         <Icon
           icon={CheckmarkCircle02Icon}
-          className="size-12 text-p-accent"
+          className="size-12 text-p-accent-ink"
           strokeWidth={1.5}
         />
         <h1 className="text-2xl font-semibold tracking-tight">

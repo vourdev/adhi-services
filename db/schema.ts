@@ -7,7 +7,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import {
-  ACCENTS,
+  type AccentValue,
   CARD_SHAPES,
   CARD_STYLES,
   CHECKOUT_METHODS,
@@ -104,7 +104,8 @@ export const profiles = sqliteTable(
     avatarUrl: text("avatar_url"),
     coverUrl: text("cover_url"),
     theme: text("theme", { enum: PROFILE_THEMES }).notNull().default("system"),
-    accent: text("accent", { enum: ACCENTS }).notNull().default("blue"),
+    /** A named accent (ACCENTS) or a picked colour as "#rrggbb". */
+    accent: text("accent").$type<AccentValue>().notNull().default("blue"),
     themePreset: text("theme_preset", { enum: THEME_PRESETS })
       .notNull()
       .default("default"),

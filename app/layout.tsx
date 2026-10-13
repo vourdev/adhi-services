@@ -1,16 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { siteUrl } from "@/lib/env";
 
+import { fontVariables } from "./fonts";
 import "./globals.css";
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -35,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={jakarta.variable}
+      className={fontVariables}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >

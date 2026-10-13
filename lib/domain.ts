@@ -38,6 +38,7 @@ export const CARD_STYLES = [
   "outline",
   "shadow",
   "neobrutalism",
+  "glow",
 ] as const;
 export type CardStyle = (typeof CARD_STYLES)[number];
 
@@ -66,6 +67,12 @@ export const ACCENTS = [
   "slate",
 ] as const;
 export type Accent = (typeof ACCENTS)[number];
+
+/** A colour the owner picked: "#rrggbb", lowercase. */
+export type AccentHex = `#${string}`;
+
+/** What a profile stores as its accent: one of the named accents or a picked colour. */
+export type AccentValue = Accent | AccentHex;
 
 export const SOCIAL_PLATFORMS = [
   "instagram",

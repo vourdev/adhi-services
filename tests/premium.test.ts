@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { activeNavItem, getNavGroups } from "@/app/admin/_components/nav-items";
 import type { Database } from "@/db/client";
 import { orders, profiles, users } from "@/db/schema";
-import { parseCustomTheme, THEME_PRESET_CONFIGS } from "@/lib/custom-theme";
+import { parseCustomTheme } from "@/lib/custom-theme";
 import {
   effectivePlan,
   FREE_PROFILE_LOOK,
@@ -91,7 +91,26 @@ async function makeOwner(
   };
 }
 
-const glassTheme = JSON.stringify(THEME_PRESET_CONFIGS.glassmorphism);
+/** Page colours for the "custom" preset, as the profile form receives them. */
+const CUSTOM_THEME = {
+  preset: "custom",
+  backgroundType: "gradient",
+  gradientFrom: "#0f172a",
+  gradientTo: "#1e1b4b",
+  gradientAngle: 135,
+  backgroundColor: "#0f172a",
+  textColor: "#f8fafc",
+  textMutedColor: "#94a3b8",
+  cardColor: "rgba(255, 255, 255, 0.08)",
+  cardBorderColor: "rgba(255, 255, 255, 0.18)",
+  accentColor: "#6366f1",
+  accentTextColor: "#ffffff",
+  fontFamily: "Outfit",
+  cardShape: "smooth",
+  cardStyle: "glass",
+};
+
+const glassTheme = JSON.stringify(CUSTOM_THEME);
 
 function profileInput(extra: Record<string, unknown> = {}) {
   return profileInputSchema.parse({
@@ -174,13 +193,17 @@ describe("plan rules", () => {
 });
 
 describe("custom theme validation", () => {
-  test("presets pass and are completed with the defaults", () => {
-    for (const preset of Object.values(THEME_PRESET_CONFIGS))
-      assert.ok(parseCustomTheme(JSON.stringify(preset)));
+  test("a full theme passes and a partial one is completed with the defaults", () => {
+    assert.ok(parseCustomTheme(glassTheme));
+    const partial = parseCustomTheme(
+      JSON.stringify({ backgroundColor: "#000000" })
+    );
+    assert.equal(partial?.backgroundColor, "#000000");
+    assert.equal(partial?.textColor, "#09090b");
   });
 
   test("anything that is not a plain color, font or image URL is refused", () => {
-    const base = THEME_PRESET_CONFIGS.minimal;
+    const base = CUSTOM_THEME;
     for (const bad of [
       { textColor: "red; background: url(https://evil.example)" },
       { accentColor: "expression(alert(1))" },
@@ -199,7 +222,7 @@ describe("custom theme validation", () => {
 
   test("the profile form stores the theme normalized and rejects bad values", () => {
     const saved = profileInput();
-    assert.equal(parseCustomTheme(saved.customTheme)?.preset, "glassmorphism");
+    assert.equal(parseCustomTheme(saved.customTheme)?.preset, "custom");
     const bad = profileInputSchema.safeParse({
       displayName: "Nama",
       theme: "system",
@@ -347,13 +370,15 @@ describe("saving premium settings", () => {
     await updateProfile(
       db,
       owner.profileId,
-      profileInput({ displayName: "Nama Baru" }),
+      profileInput({ displayName: "Nama Baru", accent: "#FF6600" }),
       { premium: false }
     );
     const stored = await db.query.profiles.findFirst({
       where: eq(profiles.id, owner.profileId),
     });
     assert.equal(stored?.displayName, "Nama Baru");
+    // The accent colour is not a premium setting; a picked colour is stored normalized.
+    assert.equal(stored?.accent, "#ff6600");
     assert.equal(stored?.themePreset, "default");
     assert.equal(stored?.customTheme, null);
     assert.equal(stored?.hideWatermark, false);

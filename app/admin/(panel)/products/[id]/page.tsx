@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { parseRange } from "@/lib/analytics/range";
 import { blobStorageEnabled, siteUrl } from "@/lib/env";
 import { formatNumber, formatRupiah } from "@/lib/format";
+import { visitorLook } from "@/lib/profile-look";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 import { adminContext, ownerPayments } from "@/server/admin";
 import { getProductAnalytics } from "@/server/analytics/queries";
@@ -80,8 +81,7 @@ export default async function EditProductPage({
         initialValues={toFormValues(product, onProfile)}
         username={owner.profile.username}
         siteUrl={siteUrl()}
-        profileTheme={owner.profile.theme}
-        profileAccent={owner.profile.accent}
+        profileLook={visitorLook(owner.profile, owner.user.plan === "premium")}
         profileWhatsappSet={Boolean(
           owner.profile.whatsappNumber &&
           isValidWhatsAppNumber(owner.profile.whatsappNumber)

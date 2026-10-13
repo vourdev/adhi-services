@@ -15,6 +15,7 @@ import {
   hasPremium,
   withoutPremiumFields,
 } from "@/lib/plan";
+import { type ProfileLook, visitorLook } from "@/lib/profile-look";
 import type {
   PublicBlock,
   PublicProduct,
@@ -180,6 +181,31 @@ export async function getPublicProfile(
     socials,
     blocks: visible,
   };
+}
+
+/**
+ * A profile's look as visitors see it, for pages that do not load the whole
+ * profile (the order page): premium styling only while the plan is active.
+ */
+export async function getVisitorLook(
+  db: Database,
+  profileId: string,
+  nowMs = Date.now()
+): Promise<ProfileLook | null> {
+  const [row] = await db
+    .select({
+      profile: profiles,
+      owner: {
+        role: users.role,
+        plan: users.plan,
+        planExpiresAt: users.planExpiresAt,
+      },
+    })
+    .from(profiles)
+    .innerJoin(users, eq(users.id, profiles.ownerId))
+    .where(eq(profiles.id, profileId))
+    .limit(1);
+  return row ? visitorLook(row.profile, hasPremium(row.owner, nowMs)) : null;
 }
 
 function toProductCard(product: Product): PublicProductCard {

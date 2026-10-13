@@ -66,6 +66,7 @@
   --color-p-accent: var(--p-accent);
   --color-p-accent-fg: var(--p-accent-fg);
   --color-p-accent-soft: var(--p-accent-soft);
+  --color-p-accent-ink: var(--p-accent-ink);
   --color-p-price: var(--p-price);
   --color-p-sale: var(--p-sale);
 
@@ -151,7 +152,15 @@
 
 /* ----------------------------------------------------------- profile */
 
-/* Public pages: light grey page, white cards, prices and buttons in the profile's accent. */
+/*
+ * Public pages and their dashboard previews. A .profile-surface carries the
+ * look from lib/profile-look.ts as attributes: data-theme (already resolved
+ * for presets that fix light or dark), data-accent, data-preset,
+ * data-card-shape and data-card-style. The rules below turn them into p-*
+ * tokens and style the .p-* classes; components use nothing else.
+ */
+
+/* Standard preset, light: light grey page, white cards. */
 .profile-surface {
   --p-bg: #f1f3f6;
   --p-card: #ffffff;
@@ -161,9 +170,16 @@
   --p-muted: #5b6474;
   --p-accent: var(--accent-light);
   --p-accent-fg: var(--accent-fg-light);
-  --p-accent-soft: color-mix(in oklab, var(--accent-light) 10%, #ffffff);
-  --p-price: var(--accent-light);
+  /* The accent as text or icon colour; differs from the fill only for a picked colour. */
+  --p-accent-ink: var(--accent-text-light);
+  --p-accent-soft: color-mix(in oklab, var(--p-accent) 10%, var(--p-card));
+  --p-price: var(--p-accent-ink);
   --p-sale: #d03b3b;
+  /* Neobrutalist borders and block shadows. */
+  --p-ink: var(--p-fg);
+  --p-shadow: rgb(15 23 42 / 0.2);
+  --p-glass: rgb(255 255 255 / 0.55);
+  --p-glass-line: rgb(255 255 255 / 0.9);
   background-color: var(--p-bg);
   color: var(--p-fg);
   color-scheme: light;
@@ -179,9 +195,11 @@
   --p-muted: #9ba4b3;
   --p-accent: var(--accent-dark);
   --p-accent-fg: var(--accent-fg-dark);
-  --p-accent-soft: color-mix(in oklab, var(--accent-dark) 14%, #171b23);
-  --p-price: var(--accent-dark);
-  --p-sale: #d03b3b;
+  --p-accent-ink: var(--accent-text-dark);
+  --p-accent-soft: color-mix(in oklab, var(--p-accent) 14%, var(--p-card));
+  --p-shadow: rgb(0 0 0 / 0.6);
+  --p-glass: rgb(255 255 255 / 0.06);
+  --p-glass-line: rgb(255 255 255 / 0.12);
   color-scheme: dark;
 }
 
@@ -195,11 +213,114 @@
     --p-muted: #9ba4b3;
     --p-accent: var(--accent-dark);
     --p-accent-fg: var(--accent-fg-dark);
-    --p-accent-soft: color-mix(in oklab, var(--accent-dark) 14%, #171b23);
-    --p-price: var(--accent-dark);
-    --p-sale: #d03b3b;
+    --p-accent-ink: var(--accent-text-dark);
+    --p-accent-soft: color-mix(in oklab, var(--p-accent) 14%, var(--p-card));
+    --p-shadow: rgb(0 0 0 / 0.6);
+    --p-glass: rgb(255 255 255 / 0.06);
+    --p-glass-line: rgb(255 255 255 / 0.12);
     color-scheme: dark;
   }
+}
+
+/* Minimal preset: white page, hairlines, black and white. Follows light/dark. */
+.profile-surface[data-preset="minimal"] {
+  --p-bg: #ffffff;
+  --p-card: #ffffff;
+  --p-card-hover: #fafafa;
+  --p-line: #e8e8e8;
+  --p-fg: #0a0a0a;
+  --p-muted: #6b6b6b;
+}
+
+.profile-surface[data-preset="minimal"][data-theme="dark"] {
+  --p-bg: #0a0a0a;
+  --p-card: #0a0a0a;
+  --p-card-hover: #141414;
+  --p-line: #262626;
+  --p-fg: #fafafa;
+  --p-muted: #a1a1a1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .profile-surface[data-preset="minimal"][data-theme="system"] {
+    --p-bg: #0a0a0a;
+    --p-card: #0a0a0a;
+    --p-card-hover: #141414;
+    --p-line: #262626;
+    --p-fg: #fafafa;
+    --p-muted: #a1a1a1;
+  }
+}
+
+/* Glassmorphism preset (always dark): violet, cyan and pink light behind frosted cards. */
+.profile-surface[data-preset="glassmorphism"] {
+  --p-bg: #120f2e;
+  --p-card: rgb(255 255 255 / 0.08);
+  --p-card-hover: rgb(255 255 255 / 0.12);
+  --p-line: rgb(255 255 255 / 0.14);
+  --p-fg: #f7f6ff;
+  --p-muted: #d6d2f0;
+  --p-shadow: rgb(6 4 24 / 0.6);
+  --p-glass: rgb(255 255 255 / 0.09);
+  --p-glass-line: rgb(255 255 255 / 0.2);
+  background-image:
+    radial-gradient(
+      26rem 26rem at 6% 14%,
+      rgb(139 92 246 / 0.42),
+      transparent 70%
+    ),
+    radial-gradient(
+      24rem 24rem at 96% 40%,
+      rgb(6 182 212 / 0.3),
+      transparent 70%
+    ),
+    radial-gradient(
+      28rem 28rem at 12% 80%,
+      rgb(236 72 153 / 0.3),
+      transparent 70%
+    ),
+    linear-gradient(165deg, #1b1446 0%, #231256 45%, #0f2a52 100%);
+}
+
+/* Neon preset (always dark): black page, a glow of the accent behind the name, a faint grid. */
+.profile-surface[data-preset="neon"] {
+  --p-bg: #07070d;
+  --p-card: #0d0d16;
+  --p-card-hover: #13131f;
+  --p-line: #24243a;
+  --p-fg: #f4f4ff;
+  --p-muted: #a3a3c2;
+  --p-shadow: rgb(0 0 0 / 0.7);
+  background-image:
+    radial-gradient(
+      110% 26rem at 50% 15rem,
+      color-mix(in oklab, var(--p-accent) 16%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size:
+    auto,
+    32px 32px,
+    32px 32px;
+}
+
+/* Neobrutalist preset (always light): yellow dot grid, black ink, white cards. */
+.profile-surface[data-preset="brutalist"] {
+  --p-bg: #ffde59;
+  --p-card: #ffffff;
+  --p-card-hover: #fff8db;
+  --p-line: #111111;
+  --p-fg: #111111;
+  --p-muted: #45412f;
+  --p-ink: #111111;
+  --p-price: #111111;
+  --p-shadow: rgb(17 17 17 / 0.35);
+  background-image: radial-gradient(
+    rgb(17 17 17 / 0.16) 1.2px,
+    transparent 1.6px
+  );
+  background-size: 18px 18px;
 }
 
 .profile-surface ::selection {
@@ -207,7 +328,12 @@
   color: var(--p-accent-fg);
 }
 
-/* Accent presets. Every pair below passes WCAG AA as button text and as text on the page. */
+.profile-surface :focus-visible {
+  outline: 2px solid var(--p-accent-ink);
+  outline-offset: 3px;
+}
+
+/* Named accents. Every pair passes WCAG AA as button text and as text on the page. */
 [data-accent="blue"] {
   --accent-light: #1d4fd8;
   --accent-fg-light: #ffffff;
@@ -244,10 +370,199 @@
   --accent-dark: #e2e8f0;
   --accent-fg-dark: #0f172a;
 }
+/* Named accents read as text as they are. A picked colour (data-accent="custom")
+   sets all six variables inline, with a text shade that passes AA (lib/color.ts). */
+[data-accent]:not([data-accent="custom"]) {
+  --accent-text-light: var(--accent-light);
+  --accent-text-dark: var(--accent-dark);
+}
 
-.profile-surface :focus-visible {
-  outline: 2px solid var(--p-accent);
-  outline-offset: 3px;
+/* Card corners. --p-shape-scale shrinks them in the small dashboard previews. */
+.profile-surface {
+  --p-r-card: calc(1rem * var(--p-shape-scale, 1));
+  --p-r-row: calc(1rem * var(--p-shape-scale, 1));
+  --p-r-media: calc(0.75rem * var(--p-shape-scale, 1));
+  --p-r-tile: calc(0.75rem * var(--p-shape-scale, 1));
+  --p-r-btn: 9999px;
+}
+.profile-surface[data-card-shape="sharp"] {
+  --p-r-card: 0px;
+  --p-r-row: 0px;
+  --p-r-media: 0px;
+  --p-r-tile: 0px;
+  --p-r-btn: 0px;
+}
+.profile-surface[data-card-shape="rounded"] {
+  --p-r-card: calc(0.5rem * var(--p-shape-scale, 1));
+  --p-r-row: calc(0.5rem * var(--p-shape-scale, 1));
+  --p-r-media: calc(0.375rem * var(--p-shape-scale, 1));
+  --p-r-tile: calc(0.5rem * var(--p-shape-scale, 1));
+  --p-r-btn: calc(0.5rem * var(--p-shape-scale, 1));
+}
+.profile-surface[data-card-shape="extra"] {
+  --p-r-card: calc(1.5rem * var(--p-shape-scale, 1));
+  --p-r-row: calc(1.5rem * var(--p-shape-scale, 1));
+  --p-r-media: calc(1rem * var(--p-shape-scale, 1));
+  --p-r-tile: calc(1rem * var(--p-shape-scale, 1));
+}
+/* Pill: one-line rows and small things become capsules and circles; tall cards stay very round. */
+.profile-surface[data-card-shape="pill"] {
+  --p-r-card: calc(2rem * var(--p-shape-scale, 1));
+  --p-r-row: 9999px;
+  --p-r-media: 9999px;
+  --p-r-tile: 9999px;
+}
+
+@layer components {
+  /* Cards: links, products, panels. */
+  .p-card,
+  .p-tile {
+    border: 1px solid var(--p-line);
+    border-radius: var(--p-r-card);
+    background-color: var(--p-card);
+    box-shadow: 0 1px 2px rgb(17 24 39 / 0.05);
+  }
+  /* One-line rows follow the "Kapsul" shape all the way. */
+  .p-row {
+    border-radius: var(--p-r-row);
+  }
+  /* Small surfaces: social icons, the share button. */
+  .p-tile {
+    border-radius: var(--p-r-tile);
+  }
+  /* Accent buttons and the round accent badges on cards. */
+  .p-btn {
+    border-radius: var(--p-r-btn);
+  }
+  .p-avatar {
+    box-shadow: 0 0 0 4px var(--p-bg);
+  }
+  /* Anything tappable: cards, tiles, buttons. */
+  .p-press {
+    transition-property: transform, box-shadow, border-color, background-color;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Glass: frosted cards; needs colour behind them, as in the Glassmorphism preset. */
+  [data-card-style="glass"] :is(.p-card, .p-tile) {
+    border-color: var(--p-glass-line);
+    background-color: var(--p-glass);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 12px 32px -16px var(--p-shadow);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+  [data-card-style="glass"] .p-avatar {
+    box-shadow:
+      0 0 0 3px var(--p-glass-line),
+      0 12px 32px -12px var(--p-shadow);
+  }
+
+  /* Outline: no fill, only the edge. */
+  [data-card-style="outline"] :is(.p-card, .p-tile) {
+    border-color: color-mix(in oklab, var(--p-fg) 16%, transparent);
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  /* Shadow: no edge, a soft lifted shadow. */
+  [data-card-style="shadow"] :is(.p-card, .p-tile) {
+    border-color: color-mix(in oklab, var(--p-fg) 5%, transparent);
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.05),
+      0 14px 32px -14px var(--p-shadow);
+  }
+
+  /* Neobrutalism: thick ink edges and solid block shadows. */
+  [data-card-style="neobrutalism"] :is(.p-card, .p-tile, .p-btn) {
+    border: 2px solid var(--p-ink);
+    box-shadow: 4px 4px 0 0 var(--p-ink);
+  }
+  [data-card-style="neobrutalism"] :is(.p-tile, .p-btn) {
+    box-shadow: 3px 3px 0 0 var(--p-ink);
+  }
+  [data-card-style="neobrutalism"] .p-avatar {
+    box-shadow:
+      0 0 0 3px var(--p-ink),
+      5px 5px 0 3px var(--p-ink);
+  }
+  /* The cover gets an ink edge: along the bottom on phones, all round once it is a card. */
+  [data-card-style="neobrutalism"] .p-cover {
+    border-bottom: 2px solid var(--p-ink);
+  }
+  @container (min-width: 36rem) {
+    [data-card-style="neobrutalism"] .p-cover {
+      border: 2px solid var(--p-ink);
+      box-shadow: 4px 4px 0 0 var(--p-ink);
+    }
+  }
+
+  /* Glow: edges and halos in the accent colour, as in the Neon preset. */
+  [data-card-style="glow"] :is(.p-card, .p-tile) {
+    border-color: color-mix(in oklab, var(--p-accent) 45%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--p-accent) 8%, transparent),
+      0 0 26px -10px var(--p-accent);
+  }
+  [data-card-style="glow"] .p-btn {
+    box-shadow: 0 0 22px -4px var(--p-accent);
+  }
+  [data-card-style="glow"] .p-avatar {
+    box-shadow:
+      0 0 0 3px var(--p-bg),
+      0 0 0 5px var(--p-accent),
+      0 0 32px 0 color-mix(in oklab, var(--p-accent) 55%, transparent);
+  }
+
+  /* Hover (pointer devices only, so taps do not leave cards stuck "hovered"). */
+  @media (hover: hover) {
+    .p-press:hover {
+      border-color: color-mix(in oklab, var(--p-fg) 24%, var(--p-line));
+    }
+    [data-card-style="glass"] .p-press:hover {
+      border-color: color-mix(in oklab, var(--p-glass-line) 55%, var(--p-fg));
+    }
+    [data-card-style="outline"] .p-press:hover {
+      border-color: color-mix(in oklab, var(--p-fg) 48%, transparent);
+    }
+    [data-card-style="shadow"] .p-press:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 2px 4px rgb(15 23 42 / 0.06),
+        0 20px 40px -16px var(--p-shadow);
+    }
+    [data-card-style="neobrutalism"] .p-press:hover {
+      border-color: var(--p-ink);
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 0 var(--p-ink);
+    }
+    [data-card-style="neobrutalism"] :is(.p-tile, .p-btn).p-press:hover {
+      box-shadow: 5px 5px 0 0 var(--p-ink);
+    }
+    [data-card-style="glow"] .p-press:hover {
+      border-color: var(--p-accent);
+      box-shadow:
+        0 0 0 1px color-mix(in oklab, var(--p-accent) 30%, transparent),
+        0 0 34px -8px var(--p-accent);
+    }
+  }
+
+  /* Pressed. After hover so it wins while both apply. */
+  .p-press:active {
+    transform: scale(0.985);
+  }
+  [data-card-style="neobrutalism"]
+    :is(.p-card, .p-tile, .p-btn).p-press:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 0 var(--p-ink);
+  }
+
+  /* Preset touches beyond the cards. */
+  [data-preset="neon"] .p-name {
+    text-shadow: 0 0 28px color-mix(in oklab, var(--p-accent) 55%, transparent);
+  }
 }
 
 /* ------------------------------------------------------------ shared */
@@ -279,7 +594,7 @@
     background-color: var(--sidebar);
   }
 
-  /* Public pages: the profile theme's page colour (mirrors --p-bg below). */
+  /* Public pages: the profile's page colour (mirrors --p-bg above). */
   html:has([data-page-surface]) {
     background-color: #f1f3f6;
   }
@@ -292,6 +607,26 @@
       background-color: #0d1016;
       color-scheme: dark;
     }
+  }
+  html:has([data-page-surface][data-preset="minimal"]) {
+    background-color: #ffffff;
+  }
+  html:has([data-page-surface][data-preset="minimal"][data-theme="dark"]) {
+    background-color: #0a0a0a;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:has([data-page-surface][data-preset="minimal"][data-theme="system"]) {
+      background-color: #0a0a0a;
+    }
+  }
+  html:has([data-page-surface][data-preset="glassmorphism"]) {
+    background-color: #120f2e;
+  }
+  html:has([data-page-surface][data-preset="neon"]) {
+    background-color: #07070d;
+  }
+  html:has([data-page-surface][data-preset="brutalist"]) {
+    background-color: #ffde59;
   }
 }
 

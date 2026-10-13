@@ -5,11 +5,7 @@ import { eq } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import { membershipLogs, users } from "@/db/schema";
-import {
-  parseCustomTheme,
-  THEME_PRESET_CONFIGS,
-  themeToCssVariables,
-} from "@/lib/custom-theme";
+import { parseCustomTheme, themeToCssVariables } from "@/lib/custom-theme";
 import { resolveSession, signIn } from "@/server/auth";
 import {
   createMember,
@@ -250,8 +246,17 @@ describe("SaaS Multi-Tenant Management", () => {
   });
 
   test("ultra-customizer theme parser and CSS variables generator", () => {
-    const glassPreset = THEME_PRESET_CONFIGS.glassmorphism;
-    const jsonStr = JSON.stringify(glassPreset);
+    const jsonStr = JSON.stringify({
+      preset: "custom",
+      backgroundType: "gradient",
+      gradientFrom: "#0f172a",
+      gradientTo: "#1e1b4b",
+      backgroundColor: "#0f172a",
+      textColor: "#f8fafc",
+      textMutedColor: "#94a3b8",
+      cardColor: "rgba(255, 255, 255, 0.08)",
+      cardBorderColor: "rgba(255, 255, 255, 0.18)",
+    });
     const parsed = parseCustomTheme(jsonStr);
     assert.ok(parsed);
     assert.equal(parsed.backgroundType, "gradient");

@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 
-import { parseCustomTheme, themeToCssVariables } from "@/lib/custom-theme";
 import { SOCIAL_LABELS } from "@/lib/domain";
+import { type ProfileLook, surfaceAttributes } from "@/lib/profile-look";
 import type { PublicBlock, PublicProfile } from "@/lib/public-types";
 
 import { BioText } from "./bio-text";
@@ -62,7 +62,7 @@ export function ProfileView({
               width={1600}
               height={900}
               priority
-              className="aspect-video w-full bg-p-line object-cover @xl:rounded-3xl"
+              className="p-cover aspect-video w-full bg-p-line object-cover @xl:rounded-[var(--p-r-card)]"
             />
           </div>
         ) : null}
@@ -79,12 +79,12 @@ export function ProfileView({
                 width={320}
                 height={320}
                 eager
-                className="relative size-26 shrink-0 rounded-full bg-p-line object-cover object-[50%_30%] ring-4 ring-p-bg @xl:size-28"
+                className="p-avatar relative size-26 shrink-0 rounded-full bg-p-line object-cover object-[50%_30%] @xl:size-28"
               />
             ) : (
               <span
                 aria-hidden
-                className="relative grid size-26 shrink-0 place-items-center rounded-full bg-p-accent text-4xl font-bold text-p-accent-fg ring-4 ring-p-bg @xl:size-28"
+                className="p-avatar relative grid size-26 shrink-0 place-items-center rounded-full bg-p-accent text-4xl font-bold text-p-accent-fg @xl:size-28"
               >
                 {profile.displayName.slice(0, 1).toUpperCase()}
               </span>
@@ -92,14 +92,14 @@ export function ProfileView({
             {preview ? null : <ShareButton title={profile.displayName} />}
           </div>
 
-          <Name className="mt-3 text-[1.625rem] leading-tight font-bold tracking-tight text-balance">
+          <Name className="p-name mt-3 text-[1.625rem] leading-tight font-bold tracking-tight text-balance">
             {profile.displayName}
           </Name>
           {profile.bio ? (
             <p className="mt-1.5 text-[15px] leading-relaxed text-pretty whitespace-pre-line text-p-fg/75">
               <BioText
                 text={profile.bio}
-                linkClassName="font-semibold text-p-accent underline-offset-4 hover:underline"
+                linkClassName="font-semibold text-p-accent-ink underline-offset-4 hover:underline"
               />
             </p>
           ) : null}
@@ -117,7 +117,7 @@ export function ProfileView({
                         ? { target: "_blank", rel: "noopener noreferrer me" }
                         : {})}
                       aria-label={label}
-                      className="grid size-11 place-items-center rounded-xl bg-p-card text-p-fg shadow-[0_1px_2px_rgb(17_24_39/0.05)] ring-1 ring-p-line transition-[transform,color] duration-150 hover:text-p-accent active:scale-95 motion-reduce:active:scale-100"
+                      className="p-tile p-press grid size-11 place-items-center text-p-fg hover:text-p-accent-ink"
                     >
                       <Icon
                         icon={SOCIAL_ICONS[social.platform]}
@@ -146,7 +146,7 @@ export function ProfileView({
           {profile.blocks.length === 0 ? (
             // Visitors see nothing here; only the dashboard preview explains the empty list.
             preview ? (
-              <p className="rounded-2xl border border-dashed border-p-line px-4 py-10 text-center text-sm text-p-muted">
+              <p className="rounded-[var(--p-r-card)] border border-dashed border-p-line px-4 py-10 text-center text-sm text-p-muted">
                 Belum ada link yang ditampilkan.
               </p>
             ) : null
@@ -196,27 +196,27 @@ export function ProfileView({
   );
 }
 
+/**
+ * The page background and every p-* token for one profile's look (see
+ * lib/profile-look.ts). `page` marks the full-page surface, whose colour also
+ * fills the browser canvas; dashboard previews leave it off.
+ */
 export function ProfileSurface({
-  theme,
-  accent,
-  customTheme,
+  look,
+  page = true,
+  className = "",
   children,
 }: {
-  theme: PublicProfile["theme"];
-  accent: PublicProfile["accent"];
-  customTheme?: string | null | undefined;
+  look: ProfileLook;
+  page?: boolean;
+  className?: string;
   children: ReactNode;
 }): ReactNode {
-  const parsed = parseCustomTheme(customTheme);
-  const customStyles = parsed ? themeToCssVariables(parsed) : undefined;
-
   return (
     <div
-      className="profile-surface min-h-dvh font-sans antialiased"
-      data-theme={theme}
-      data-accent={accent}
-      data-page-surface=""
-      style={customStyles}
+      className={`profile-surface antialiased ${page ? "min-h-dvh" : ""} ${className}`}
+      {...surfaceAttributes(look)}
+      {...(page ? { "data-page-surface": "" } : {})}
     >
       {children}
     </div>

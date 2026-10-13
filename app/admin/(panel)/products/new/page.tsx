@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { blobStorageEnabled, siteUrl } from "@/lib/env";
+import { visitorLook } from "@/lib/profile-look";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 import { adminContext, ownerPayments } from "@/server/admin";
 
@@ -34,8 +35,7 @@ export default async function NewProductPage(): Promise<ReactNode> {
         initialValues={NEW_PRODUCT}
         username={owner.profile.username}
         siteUrl={siteUrl()}
-        profileTheme={owner.profile.theme}
-        profileAccent={owner.profile.accent}
+        profileLook={visitorLook(owner.profile, owner.user.plan === "premium")}
         profileWhatsappSet={Boolean(
           owner.profile.whatsappNumber &&
           isValidWhatsAppNumber(owner.profile.whatsappNumber)

@@ -19,6 +19,7 @@ import { ViewBeacon } from "@/components/profile/view-beacon";
 import { WhatsAppOrder } from "@/components/profile/whatsapp-order";
 import { getDb } from "@/db/client";
 import { PRODUCT_TYPE_LABELS } from "@/lib/domain";
+import { lookFromProfile } from "@/lib/profile-look";
 import { hasUsableCodes } from "@/server/discount-codes";
 import { loadProduct } from "@/server/public-data";
 import { getPlatformSettings } from "@/server/super-admin";
@@ -78,7 +79,7 @@ export default async function ProductPage({
   let cta: ReactNode = null;
   if (product.checkoutMethod === "whatsapp") {
     cta = whatsappOrder ? null : (
-      <p className="rounded-full bg-p-card px-4 py-3.5 text-center text-sm text-p-muted ring-1 ring-p-line">
+      <p className="p-card rounded-[var(--p-r-btn)] px-4 py-3.5 text-center text-sm text-p-muted">
         Pemesanan belum dibuka.
       </p>
     );
@@ -92,18 +93,14 @@ export default async function ProductPage({
         {product.ctaLabel ?? "Beli Sekarang"}
       </Link>
     ) : (
-      <p className="rounded-full bg-p-card px-4 py-3.5 text-center text-sm text-p-muted ring-1 ring-p-line">
+      <p className="p-card rounded-[var(--p-r-btn)] px-4 py-3.5 text-center text-sm text-p-muted">
         Pembayaran online belum tersedia.
       </p>
     );
   }
 
   return (
-    <ProfileSurface
-      theme={profile.theme}
-      accent={profile.accent}
-      customTheme={profile.customTheme}
-    >
+    <ProfileSurface look={lookFromProfile(profile)}>
       {product.status !== "published" ? (
         <div className="bg-p-fg px-4 py-2 text-center text-xs text-p-bg">
           Pratinjau draf. Hanya Anda yang bisa melihat halaman ini.
@@ -126,7 +123,7 @@ export default async function ProductPage({
               width={960}
               height={960}
               priority
-              className="aspect-square w-full rounded-2xl bg-p-line object-cover"
+              className="aspect-square w-full rounded-[var(--p-r-card)] bg-p-line object-cover"
             />
           ) : null}
 
@@ -172,7 +169,7 @@ export default async function ProductPage({
               <li className="flex gap-2.5">
                 <Icon
                   icon={SquareLock02Icon}
-                  className="mt-px size-[18px] shrink-0 text-p-accent"
+                  className="mt-px size-[18px] shrink-0 text-p-accent-ink"
                 />
                 Pembayaran diproses oleh Midtrans (QRIS, virtual account,
                 e-wallet, kartu).
@@ -181,7 +178,7 @@ export default async function ProductPage({
                 <li className="flex gap-2.5">
                   <Icon
                     icon={SecurityCheckIcon}
-                    className="mt-px size-[18px] shrink-0 text-p-accent"
+                    className="mt-px size-[18px] shrink-0 text-p-accent-ink"
                   />
                   Link unduhan muncul di halaman pesanan setelah pembayaran
                   terverifikasi.

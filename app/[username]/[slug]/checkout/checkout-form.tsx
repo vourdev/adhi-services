@@ -12,7 +12,7 @@ import { formatRupiah } from "@/lib/format";
 import { checkoutAction, type CheckoutState } from "./actions";
 
 const inputClass =
-  "mt-1.5 block h-12 w-full rounded-xl border border-p-line bg-p-card px-3.5 text-base text-p-fg placeholder:text-p-muted/70 aria-invalid:border-red-500";
+  "mt-1.5 block h-12 w-full rounded-[var(--p-r-media)] border border-p-line bg-p-card px-3.5 text-base text-p-fg placeholder:text-p-muted/70 aria-invalid:border-red-500";
 
 function Field({
   id,
@@ -170,7 +170,7 @@ export function CheckoutForm({
       <button
         type="submit"
         disabled={pending}
-        className="mt-1 flex h-13 w-full items-center justify-center rounded-full bg-p-accent px-6 text-base font-semibold text-p-accent-fg transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70 motion-reduce:active:scale-100"
+        className="p-btn p-press mt-1 flex h-13 w-full items-center justify-center bg-p-accent px-6 text-base font-semibold text-p-accent-fg disabled:opacity-70"
       >
         {pending ? "Menyiapkan pembayaran..." : `Bayar ${formatRupiah(total)}`}
       </button>

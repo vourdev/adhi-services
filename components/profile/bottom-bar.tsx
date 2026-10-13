@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export const ctaClass =
-  "flex h-13 w-full items-center justify-center gap-2 rounded-full bg-p-accent px-6 text-base font-semibold text-p-accent-fg transition-transform duration-150 active:scale-[0.98] motion-reduce:active:scale-100";
+  "p-btn p-press flex h-13 w-full items-center justify-center gap-2 bg-p-accent px-6 text-base font-semibold text-p-accent-fg";
 
 /** The product page's buy button, fixed above the phone's home indicator. */
 export function BottomBar({ children }: { children: ReactNode }): ReactNode {

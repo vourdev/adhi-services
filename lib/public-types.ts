@@ -1,5 +1,5 @@
 import type {
-  Accent,
+  AccentValue,
   CheckoutMethod,
   LinkLayout,
   ProductType,
@@ -55,7 +55,7 @@ export type PublicProfile = {
   avatarUrl: string | null;
   coverUrl: string | null;
   theme: ProfileTheme;
-  accent: Accent;
+  accent: AccentValue;
   themePreset?: string | null | undefined;
   customTheme?: string | null | undefined;
   fontFamily?: string | null | undefined;

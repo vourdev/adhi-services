@@ -36,7 +36,7 @@ export function ShareButton({ title }: { title: string }): ReactNode {
     <button
       type="button"
       onClick={share}
-      className="flex h-10 items-center gap-2 rounded-full bg-p-card px-4 text-[14px] font-semibold text-p-fg shadow-[0_1px_2px_rgb(17_24_39/0.05)] ring-1 ring-p-line transition-transform duration-150 hover:ring-p-fg/20 active:scale-95 motion-reduce:active:scale-100"
+      className="p-tile p-press flex h-10 items-center gap-2 rounded-[var(--p-r-btn)] px-4 text-[14px] font-semibold text-p-fg"
     >
       <Icon icon={copied ? Tick02Icon : Share08Icon} className="size-4.5" />
       <span aria-live="polite">{copied ? "Link disalin" : "Bagikan"}</span>

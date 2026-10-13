@@ -7,6 +7,7 @@ import { ProfileFooter } from "@/components/profile/profile-footer";
 import { ProfileSurface, ProfileView } from "@/components/profile/profile-view";
 import { ViewBeacon } from "@/components/profile/view-beacon";
 import { getDb } from "@/db/client";
+import { lookFromProfile } from "@/lib/profile-look";
 import { normalizeUsername } from "@/lib/validation";
 import { loadProfile } from "@/server/public-data";
 import { getPlatformSettings } from "@/server/super-admin";
@@ -64,11 +65,7 @@ export default async function ProfilePage({
   const platform = await getPlatformSettings(getDb());
 
   return (
-    <ProfileSurface
-      theme={profile.theme}
-      accent={profile.accent}
-      customTheme={profile.customTheme}
-    >
+    <ProfileSurface look={lookFromProfile(profile)}>
       {isOwner ? (
         <div className="bg-p-fg px-4 py-2 text-center text-xs text-p-bg">
           Anda masuk sebagai pemilik. Kunjungan dari browser ini tidak dihitung.{" "}

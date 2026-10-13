@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { normalizeHex } from "@/lib/color";
 import { parseCustomTheme } from "@/lib/custom-theme";
 import {
   ACCENTS,
@@ -18,6 +19,7 @@ import {
   THEME_PRESETS,
   USER_PLANS,
   USER_STATUSES,
+  type AccentHex,
   type SocialPlatform,
 } from "@/lib/domain";
 import { parseLocalWib } from "@/lib/pricing";
@@ -284,6 +286,22 @@ export type SocialInput = z.output<typeof socialInputSchema>;
 
 // ---------------------------------------------------------------- profile
 
+/** A named accent, or a picked colour stored as "#rrggbb". */
+const accentSchema = z.union([
+  z.enum(ACCENTS),
+  z.string().transform((value, ctx) => {
+    const hex = normalizeHex(value);
+    if (!hex) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Tulis kode warna seperti #2563eb.",
+      });
+      return z.NEVER;
+    }
+    return hex as AccentHex;
+  }),
+]);
+
 export const profileInputSchema = z.object({
   displayName: z
     .string()
@@ -294,7 +312,7 @@ export const profileInputSchema = z.object({
   avatarUrl: optionalImageUrl,
   coverUrl: optionalImageUrl,
   theme: z.enum(PROFILE_THEMES),
-  accent: z.enum(ACCENTS),
+  accent: accentSchema,
   themePreset: z.enum(THEME_PRESETS).optional(),
   /** Theme JSON. Checked value by value and stored normalized; empty clears it, omitted leaves it. */
   customTheme: z

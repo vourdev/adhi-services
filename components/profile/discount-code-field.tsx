@@ -73,10 +73,10 @@ export function DiscountCodeField({
 
   if (applied) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl bg-p-accent-soft py-2.5 pr-2 pl-3.5">
+      <div className="flex items-center gap-3 rounded-[var(--p-r-card)] bg-p-accent-soft py-2.5 pr-2 pl-3.5">
         <Icon
           icon={DiscountTag01Icon}
-          className="size-5 shrink-0 text-p-accent"
+          className="size-5 shrink-0 text-p-accent-ink"
         />
         <p className="min-w-0 flex-1 text-[14px] leading-snug" role="status">
           Kode <span className="font-semibold">{applied.code}</span> dipakai,
@@ -102,7 +102,7 @@ export function DiscountCodeField({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-fit items-center gap-2 rounded-full py-2 text-[14px] font-semibold text-p-accent"
+        className="flex w-fit items-center gap-2 rounded-full py-2 text-[14px] font-semibold text-p-accent-ink"
       >
         <Icon icon={DiscountTag01Icon} className="size-5" />
         Punya kode diskon?
@@ -134,13 +134,13 @@ export function DiscountCodeField({
           placeholder="Contoh: 1010"
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
-          className="block h-12 min-w-0 flex-1 rounded-xl border border-p-line bg-p-card px-3.5 text-base font-semibold tracking-wide text-p-fg uppercase placeholder:font-normal placeholder:tracking-normal placeholder:text-p-muted/70 placeholder:normal-case aria-invalid:border-red-500"
+          className="block h-12 min-w-0 flex-1 rounded-[var(--p-r-media)] border border-p-line bg-p-card px-3.5 text-base font-semibold tracking-wide text-p-fg uppercase placeholder:font-normal placeholder:tracking-normal placeholder:text-p-muted/70 placeholder:normal-case aria-invalid:border-red-500"
         />
         <button
           type="button"
           onClick={apply}
           disabled={pending}
-          className="h-12 shrink-0 rounded-xl bg-p-fg px-5 text-[15px] font-semibold text-p-bg transition-opacity disabled:opacity-60"
+          className="h-12 shrink-0 rounded-[var(--p-r-media)] bg-p-fg px-5 text-[15px] font-semibold text-p-bg transition-opacity disabled:opacity-60"
         >
           {pending ? "Mengecek..." : "Pakai"}
         </button>

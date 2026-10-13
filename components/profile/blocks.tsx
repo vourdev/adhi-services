@@ -29,8 +29,9 @@ import { MediaImage } from "./media-image";
  * Profile blocks. Links point at /go/... so the click is recorded on the
  * server before the redirect; nothing here needs JavaScript.
  *
- * Shape rule: cards 16px, media inside cards 12px, icon buttons 12px,
- * buttons with text are full pills.
+ * Corners, edges and shadows come from the profile's look (.p-card, .p-row,
+ * .p-btn and the --p-r-* radii in app/globals.css), so the card shape and
+ * card style settings apply to every block.
  */
 
 const LINK_ICONS: Record<LinkIconKey, IconSvgElement> = {
@@ -49,8 +50,10 @@ const LINK_ICONS: Record<LinkIconKey, IconSvgElement> = {
   web: Globe02Icon,
 };
 
-const card =
-  "rounded-2xl bg-p-card shadow-[0_1px_2px_rgb(17_24_39/0.05)] ring-1 ring-p-line transition-[transform,box-shadow] duration-150 hover:ring-p-fg/20 active:scale-[0.985] motion-reduce:active:scale-100";
+/** A tall card (image on top). */
+const card = "p-card p-press";
+/** A one-line card: icon or thumbnail, text, arrow. */
+const row = "p-card p-row p-press";
 
 type LinkData = Extract<PublicBlock, { type: "link" }>;
 
@@ -98,7 +101,7 @@ function FeaturedLink({
       <span className="flex items-center gap-3 p-4">
         <span className="min-w-0 flex-1">
           {block.category ? (
-            <span className="mb-1 block text-[12.5px] font-semibold text-p-accent">
+            <span className="mb-1 block text-[12.5px] font-semibold text-p-accent-ink">
               {block.category}
             </span>
           ) : null}
@@ -113,7 +116,7 @@ function FeaturedLink({
         </span>
         <span
           aria-hidden
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-p-accent text-p-accent-fg"
+          className="p-btn grid size-10 shrink-0 place-items-center bg-p-accent text-p-accent-fg"
         >
           <Icon
             icon={
@@ -140,7 +143,7 @@ export function LinkBlock({ block }: { block: LinkData }): ReactNode {
     <a
       href={block.href}
       rel="nofollow"
-      className={`flex items-center gap-3.5 p-3 pr-4 ${card}`}
+      className={`flex items-center gap-3.5 p-3 pr-4 ${row}`}
     >
       {block.thumbnailUrl ? (
         <MediaImage
@@ -148,12 +151,12 @@ export function LinkBlock({ block }: { block: LinkData }): ReactNode {
           alt=""
           width={112}
           height={112}
-          className="size-12 shrink-0 rounded-xl bg-p-line object-cover"
+          className="size-12 shrink-0 rounded-[var(--p-r-media)] bg-p-line object-cover"
         />
       ) : (
         <span
           aria-hidden
-          className="grid size-12 shrink-0 place-items-center rounded-xl bg-p-accent-soft text-p-accent"
+          className="grid size-12 shrink-0 place-items-center rounded-[var(--p-r-media)] bg-p-accent-soft text-p-accent-ink"
         >
           <Icon icon={LINK_ICONS[block.icon]} className="size-[22px]" />
         </span>
@@ -208,7 +211,7 @@ function ProductCover({
   ) : (
     <span
       aria-hidden
-      className={`grid place-items-center bg-p-accent-soft text-3xl font-bold text-p-accent ${className}`}
+      className={`grid place-items-center bg-p-accent-soft text-3xl font-bold text-p-accent-ink ${className}`}
     >
       {product.name.slice(0, 1).toUpperCase()}
     </span>
@@ -224,8 +227,11 @@ export function ProductBlock({
   href: string;
 }): ReactNode {
   return (
-    <a href={href} className={`flex items-center gap-3.5 p-3 pr-4 ${card}`}>
-      <ProductCover product={product} className="size-20 shrink-0 rounded-xl" />
+    <a href={href} className={`flex items-center gap-3.5 p-3 pr-4 ${row}`}>
+      <ProductCover
+        product={product}
+        className="size-20 shrink-0 rounded-[var(--p-r-media)]"
+      />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="text-[12.5px] font-medium text-p-muted">
           {PRODUCT_TYPE_LABELS[product.productType]}

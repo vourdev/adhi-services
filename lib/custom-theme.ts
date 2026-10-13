@@ -1,15 +1,7 @@
 import type { CSSProperties } from "react";
 import * as z from "zod";
 
-import {
-  CARD_SHAPES,
-  CARD_STYLES,
-  type CardShape,
-  type CardStyle,
-  FONTS,
-  THEME_PRESETS,
-  type ThemePreset,
-} from "./domain";
+import { CARD_SHAPES, CARD_STYLES, FONTS, THEME_PRESETS } from "./domain";
 
 /** Hex (#rgb, #rrggbb, with or without alpha) or rgb()/rgba(). Nothing else reaches the inline style. */
 const themeColor = z
@@ -68,75 +60,6 @@ export const DEFAULT_THEME_CONFIG: CustomThemeConfig = {
   textAlign: "left",
 };
 
-export const THEME_PRESET_CONFIGS: Record<
-  Exclude<ThemePreset, "default" | "custom">,
-  Partial<CustomThemeConfig>
-> = {
-  minimal: {
-    preset: "minimal",
-    backgroundType: "solid",
-    backgroundColor: "#fafafa",
-    textColor: "#18181b",
-    textMutedColor: "#71717a",
-    cardColor: "#ffffff",
-    cardBorderColor: "#e4e4e7",
-    accentColor: "#18181b",
-    accentTextColor: "#fafafa",
-    fontFamily: "Inter",
-    cardShape: "rounded",
-    cardStyle: "outline",
-    textAlign: "left",
-  },
-  glassmorphism: {
-    preset: "glassmorphism",
-    backgroundType: "gradient",
-    gradientFrom: "#0f172a",
-    gradientTo: "#1e1b4b",
-    gradientAngle: 135,
-    backgroundColor: "#0f172a",
-    textColor: "#f8fafc",
-    textMutedColor: "#94a3b8",
-    cardColor: "rgba(255, 255, 255, 0.08)",
-    cardBorderColor: "rgba(255, 255, 255, 0.18)",
-    accentColor: "#6366f1",
-    accentTextColor: "#ffffff",
-    fontFamily: "Outfit",
-    cardShape: "smooth",
-    cardStyle: "glass",
-    textAlign: "left",
-  },
-  neon: {
-    preset: "neon",
-    backgroundType: "solid",
-    backgroundColor: "#0a0a0c",
-    textColor: "#ffffff",
-    textMutedColor: "#a1a1aa",
-    cardColor: "#141418",
-    cardBorderColor: "#27272a",
-    accentColor: "#10b981",
-    accentTextColor: "#042f2e",
-    fontFamily: "Space Grotesk",
-    cardShape: "smooth",
-    cardStyle: "shadow",
-    textAlign: "left",
-  },
-  brutalist: {
-    preset: "brutalist",
-    backgroundType: "solid",
-    backgroundColor: "#fef08a",
-    textColor: "#000000",
-    textMutedColor: "#262626",
-    cardColor: "#ffffff",
-    cardBorderColor: "#000000",
-    accentColor: "#000000",
-    accentTextColor: "#ffffff",
-    fontFamily: "Space Grotesk",
-    cardShape: "sharp",
-    cardStyle: "neobrutalism",
-    textAlign: "left",
-  },
-};
-
 /**
  * Stored JSON to a full theme: missing keys take the defaults, then every
  * value is checked. Anything invalid (or not JSON) gives null, which renders
@@ -161,47 +84,16 @@ export function parseCustomTheme(
   return result.success ? result.data : null;
 }
 
-export function shapeToBorderRadius(shape?: CardShape): string {
-  switch (shape) {
-    case "sharp":
-      return "0px";
-    case "rounded":
-      return "8px";
-    case "smooth":
-      return "16px";
-    case "extra":
-      return "24px";
-    case "pill":
-      return "9999px";
-    default:
-      return "16px";
-  }
-}
-
-export function cardStyleClasses(style?: CardStyle): string {
-  switch (style) {
-    case "glass":
-      return "backdrop-blur-md bg-opacity-30 shadow-lg";
-    case "outline":
-      return "bg-transparent border-2 shadow-none";
-    case "shadow":
-      return "shadow-xl border";
-    case "neobrutalism":
-      return "border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
-    case "solid":
-    default:
-      return "shadow-[0_1px_2px_rgb(17_24_39/0.05)] border";
-  }
-}
-
+/**
+ * Page colours of a "custom" theme as inline CSS variables. The accent, font
+ * and card settings come from the profile's own fields, as with the presets.
+ */
 export function themeToCssVariables(theme: CustomThemeConfig): CSSProperties {
   const vars: Record<string, string> = {
     "--p-fg": theme.textColor,
     "--p-muted": theme.textMutedColor,
     "--p-card": theme.cardColor,
     "--p-line": theme.cardBorderColor,
-    "--p-accent": theme.accentColor,
-    "--p-accent-fg": theme.accentTextColor,
   };
 
   if (theme.backgroundType === "solid") {
@@ -218,10 +110,6 @@ export function themeToCssVariables(theme: CustomThemeConfig): CSSProperties {
     vars.backgroundImage = `url("${theme.backgroundImageUrl}")`;
     vars.backgroundSize = "cover";
     vars.backgroundPosition = "center";
-  }
-
-  if (theme.fontFamily) {
-    vars.fontFamily = `"${theme.fontFamily}", sans-serif`;
   }
 
   return vars as CSSProperties;

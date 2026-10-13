@@ -1,14 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Crown, Lock, Sparkles } from "lucide-react";
+import { Crown, Lock, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type * as z from "zod";
 
-import { ProfileView } from "@/components/profile/profile-view";
+import { ProfileSurface, ProfileView } from "@/components/profile/profile-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,43 +25,29 @@ import {
   FieldGroup,
   FieldLabel,
   FieldLegend,
+  FieldSeparator,
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  THEME_PRESET_CONFIGS,
-  parseCustomTheme,
-  themeToCssVariables,
-} from "@/lib/custom-theme";
-import {
-  ACCENTS,
-  FONTS,
-  type Accent,
-  type CardShape,
-  type CardStyle,
-  type ThemePreset,
-} from "@/lib/domain";
+import { type NamedPreset, PRESETS, visitorLook } from "@/lib/profile-look";
 import type { PublicProfile } from "@/lib/public-types";
 import { profileInputSchema } from "@/lib/validation";
 
 import { updateProfileAction } from "../../../_actions/profile";
 import { ImageField } from "../../../_components/image-field";
+import {
+  AccentPicker,
+  FontPicker,
+  PresetPicker,
+  ShapePicker,
+  StylePicker,
+} from "./look-pickers";
 
 type Values = z.input<typeof profileInputSchema>;
-
-const ACCENT_SWATCH: Record<Accent, { label: string; color: string }> = {
-  blue: { label: "Biru", color: "#1d4fd8" },
-  emerald: { label: "Hijau", color: "#047857" },
-  rose: { label: "Merah muda", color: "#be123c" },
-  amber: { label: "Oranye", color: "#9c4508" },
-  violet: { label: "Ungu", color: "#6d28d9" },
-  slate: { label: "Hitam", color: "#0f172a" },
-};
 
 export function ProfileEditor({
   initial,
@@ -86,7 +72,10 @@ export function ProfileEditor({
 
   function submit(output: z.output<typeof profileInputSchema>) {
     startTransition(async () => {
-      const result = await updateProfileAction(output);
+      // Named presets come from the stylesheet; theme JSON is only kept for "custom".
+      const result = await updateProfileAction(
+        output.themePreset === "custom" ? output : { ...output, customTheme: null }
+      );
       if (!result.ok) {
         for (const [field, message] of Object.entries(result.fieldErrors ?? {}))
           form.setError(field as keyof Values, { message });
@@ -99,25 +88,35 @@ export function ProfileEditor({
     });
   }
 
-  // On free, the preview keeps the standard look, exactly like the public page.
-  const currentCustomTheme = !isPremium
-    ? null
-    : values.customTheme
-      ? parseCustomTheme(values.customTheme)
-      : values.themePreset &&
-          values.themePreset !== "default" &&
-          values.themePreset !== "custom"
-        ? parseCustomTheme(
-            JSON.stringify(
-              THEME_PRESET_CONFIGS[
-                values.themePreset as keyof typeof THEME_PRESET_CONFIGS
-              ]
-            )
-          )
-        : null;
-  const liveCustomStyles = currentCustomTheme
-    ? themeToCssVariables(currentCustomTheme)
-    : undefined;
+  // The preview renders exactly what visitors get: on free, the standard look.
+  const look = visitorLook(
+    {
+      theme: values.theme,
+      accent: values.accent,
+      themePreset: values.themePreset,
+      customTheme: values.customTheme,
+      fontFamily: values.fontFamily,
+      cardShape: values.cardShape,
+      cardStyle: values.cardStyle,
+    },
+    isPremium
+  );
+  const fixedMode =
+    look.preset === "custom" || PRESETS[look.preset].mode === "follow"
+      ? null
+      : PRESETS[look.preset];
+
+  /** A preset is a starting point: it sets the font, card shape, card style and accent too. */
+  function choosePreset(preset: NamedPreset) {
+    const definition = PRESETS[preset];
+    const options = { shouldDirty: true } as const;
+    form.setValue("themePreset", preset, options);
+    form.setValue("customTheme", null, options);
+    form.setValue("fontFamily", definition.font, options);
+    form.setValue("cardShape", definition.cardShape, options);
+    form.setValue("cardStyle", definition.cardStyle, options);
+    form.setValue("accent", definition.accent, options);
+  }
 
   const live: PublicProfile = {
     ...preview,
@@ -125,18 +124,6 @@ export function ProfileEditor({
     bio: values.bio ?? "",
     avatarUrl: values.avatarUrl || null,
     coverUrl: values.coverUrl || null,
-    theme: values.theme ?? preview.theme,
-    accent: values.accent ?? preview.accent,
-    ...(isPremium
-      ? {
-          themePreset: values.themePreset ?? preview.themePreset,
-          customTheme: values.customTheme ?? preview.customTheme,
-          fontFamily: values.fontFamily ?? preview.fontFamily,
-          cardShape: values.cardShape ?? preview.cardShape,
-          cardStyle: values.cardStyle ?? preview.cardStyle,
-          hideWatermark: Boolean(values.hideWatermark),
-        }
-      : {}),
   };
 
   return (
@@ -227,8 +214,8 @@ export function ProfileEditor({
             <CardHeader>
               <CardTitle>Tampilan</CardTitle>
               <CardDescription>
-                Pilihan warna terbatas, semuanya sudah dicek kontrasnya untuk
-                mode terang dan gelap.
+                Mode terang atau gelap, dan warna aksen untuk tombol, harga,
+                serta link.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -242,7 +229,8 @@ export function ProfileEditor({
                       <RadioGroup
                         value={field.value}
                         onValueChange={field.onChange}
-                        className="grid grid-cols-3 gap-2"
+                        disabled={Boolean(fixedMode)}
+                        className={`grid grid-cols-3 gap-2 ${fixedMode ? "opacity-60" : ""}`}
                       >
                         {[
                           { value: "system", label: "Ikuti perangkat" },
@@ -265,46 +253,32 @@ export function ProfileEditor({
                       </RadioGroup>
                     )}
                   />
+                  {fixedMode ? (
+                    <FieldDescription>
+                      Preset {fixedMode.label} selalu memakai mode{" "}
+                      {fixedMode.mode === "dark" ? "gelap" : "terang"}.
+                    </FieldDescription>
+                  ) : null}
                 </FieldSet>
-                <FieldSet>
+                <FieldSet data-invalid={Boolean(errors.accent) || undefined}>
                   <FieldLegend variant="label">Warna aksen</FieldLegend>
                   <Controller
                     control={form.control}
                     name="accent"
                     render={({ field }) => (
-                      <div
-                        role="radiogroup"
-                        aria-label="Warna aksen"
-                        className="flex flex-wrap gap-2"
-                      >
-                        {ACCENTS.map((accent) => {
-                          const selected = field.value === accent;
-                          return (
-                            <button
-                              key={accent}
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              aria-label={ACCENT_SWATCH[accent].label}
-                              title={ACCENT_SWATCH[accent].label}
-                              onClick={() => field.onChange(accent)}
-                              className="grid size-9 place-items-center rounded-full ring-offset-2 ring-offset-background transition-shadow focus-visible:ring-2 focus-visible:ring-ring aria-checked:ring-2 aria-checked:ring-foreground"
-                              style={{
-                                backgroundColor: ACCENT_SWATCH[accent].color,
-                              }}
-                            >
-                              {selected ? (
-                                <Check
-                                  className="size-4 text-white"
-                                  aria-hidden
-                                />
-                              ) : null}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <AccentPicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        invalid={Boolean(errors.accent)}
+                      />
                     )}
                   />
+                  <FieldDescription>
+                    Pilih warna siap pakai, warna bebas dari pemilih warna, atau
+                    ketik kode hex. Untuk teks dan mode gelap, warnanya otomatis
+                    digelapkan atau dicerahkan sedikit supaya tetap terbaca.
+                  </FieldDescription>
+                  <FieldError>{errors.accent?.message}</FieldError>
                 </FieldSet>
               </FieldGroup>
             </CardContent>
@@ -312,24 +286,23 @@ export function ProfileEditor({
 
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="size-4 text-primary" />
                     Kustomisasi Desain (Ultra-Customizer)
                   </CardTitle>
                   <CardDescription>
-                    Pilihan tema preset, bentuk kartu, dan tipografi halaman
-                    profil.
+                    Preset tema, font, bentuk, dan gaya kartu halaman profil.
                   </CardDescription>
                 </div>
                 {isPremium ? (
-                  <Badge className="gap-1 bg-warning/10 text-warning">
+                  <Badge className="shrink-0 gap-1 bg-warning/10 text-warning">
                     <Crown />
                     Akses Premium
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="secondary" className="shrink-0 gap-1">
                     <Lock />
                     Premium
                   </Badge>
@@ -345,171 +318,99 @@ export function ProfileEditor({
                 </p>
               ) : null}
               <FieldGroup>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <FieldLabel htmlFor="themePreset">Preset Tema</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="themePreset"
-                      render={({ field }) => (
-                        <NativeSelect
-                          id="themePreset"
-                          disabled={!isPremium}
-                          value={field.value ?? "default"}
-                          onChange={(e) => {
-                            const val = e.target.value as ThemePreset;
-                            field.onChange(val);
-                            if (val in THEME_PRESET_CONFIGS) {
-                              form.setValue(
-                                "customTheme",
-                                JSON.stringify(
-                                  THEME_PRESET_CONFIGS[
-                                    val as keyof typeof THEME_PRESET_CONFIGS
-                                  ]
-                                )
-                              );
-                            } else if (val === "default") {
-                              form.setValue("customTheme", null);
-                            }
-                          }}
-                        >
-                          <option value="default">Default (Standar)</option>
-                          <option value="minimal">
-                            Minimal (Bersih & Outline)
-                          </option>
-                          <option value="glassmorphism">
-                            Glassmorphism (Frosted Glass)
-                          </option>
-                          <option value="neon">Neon (Dark & Emerald)</option>
-                          <option value="brutalist">
-                            Neobrutalisme (Tegas & Kontras)
-                          </option>
-                        </NativeSelect>
-                      )}
-                    />
-                  </div>
+                <FieldSet>
+                  <FieldLegend variant="label">Preset tema</FieldLegend>
+                  <FieldDescription>
+                    Memilih preset juga mengatur font, bentuk kartu, gaya kartu,
+                    dan warna aksen. Setelah itu semuanya tetap bisa diubah.
+                  </FieldDescription>
+                  <Controller
+                    control={form.control}
+                    name="themePreset"
+                    render={({ field }) => (
+                      <PresetPicker
+                        value={field.value ?? "default"}
+                        theme={look.theme}
+                        onChange={choosePreset}
+                        disabled={!isPremium}
+                      />
+                    )}
+                  />
+                </FieldSet>
 
-                  <div className="space-y-1.5">
-                    <FieldLabel htmlFor="fontFamily">
-                      Tipografi / Font
+                <FieldSet>
+                  <FieldLegend variant="label">Font</FieldLegend>
+                  <Controller
+                    control={form.control}
+                    name="fontFamily"
+                    render={({ field }) => (
+                      <FontPicker
+                        value={field.value ?? "Plus Jakarta Sans"}
+                        onChange={field.onChange}
+                        disabled={!isPremium}
+                      />
+                    )}
+                  />
+                </FieldSet>
+
+                <FieldSet>
+                  <FieldLegend variant="label">Bentuk sudut kartu</FieldLegend>
+                  <Controller
+                    control={form.control}
+                    name="cardShape"
+                    render={({ field }) => (
+                      <ShapePicker
+                        value={field.value ?? "smooth"}
+                        onChange={field.onChange}
+                        disabled={!isPremium}
+                      />
+                    )}
+                  />
+                </FieldSet>
+
+                <FieldSet>
+                  <FieldLegend variant="label">Gaya kartu</FieldLegend>
+                  <Controller
+                    control={form.control}
+                    name="cardStyle"
+                    render={({ field }) => (
+                      <StylePicker
+                        value={field.value ?? "solid"}
+                        look={look}
+                        onChange={field.onChange}
+                        disabled={!isPremium}
+                      />
+                    )}
+                  />
+                </FieldSet>
+
+                <FieldSeparator />
+
+                <Field orientation="horizontal">
+                  <Controller
+                    control={form.control}
+                    name="hideWatermark"
+                    render={({ field }) => (
+                      <Switch
+                        id="hideWatermark"
+                        // On free the watermark always shows, whatever was saved before.
+                        checked={isPremium && Boolean(field.value)}
+                        disabled={!isPremium}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <div>
+                    <FieldLabel htmlFor="hideWatermark" className="font-medium">
+                      Sembunyikan watermark platform
                     </FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="fontFamily"
-                      render={({ field }) => (
-                        <NativeSelect
-                          id="fontFamily"
-                          disabled={!isPremium}
-                          value={field.value ?? "Plus Jakarta Sans"}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        >
-                          {FONTS.map((font) => (
-                            <option key={font} value={font}>
-                              {font}
-                            </option>
-                          ))}
-                        </NativeSelect>
-                      )}
-                    />
+                    <FieldDescription className="text-xs">
+                      {isPremium
+                        ? "Hapus watermark platform di bagian footer profil publik."
+                        : "Tersedia khusus untuk Member Premium."}
+                    </FieldDescription>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <FieldLabel htmlFor="cardShape">
-                      Bentuk Sudut Kartu
-                    </FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="cardShape"
-                      render={({ field }) => (
-                        <NativeSelect
-                          id="cardShape"
-                          disabled={!isPremium}
-                          value={field.value ?? "smooth"}
-                          onChange={(e) =>
-                            field.onChange(e.target.value as CardShape)
-                          }
-                        >
-                          <option value="sharp">Sharp (0px / Rata)</option>
-                          <option value="rounded">
-                            Rounded (8px / Membulat Halus)
-                          </option>
-                          <option value="smooth">
-                            Smooth (16px / Standar)
-                          </option>
-                          <option value="extra">
-                            Extra Curved (24px / Lengkung Lebar)
-                          </option>
-                          <option value="pill">Pill (Kapsul Penuh)</option>
-                        </NativeSelect>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel htmlFor="cardStyle">
-                      Gaya Tampilan Kartu
-                    </FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="cardStyle"
-                      render={({ field }) => (
-                        <NativeSelect
-                          id="cardStyle"
-                          disabled={!isPremium}
-                          value={field.value ?? "solid"}
-                          onChange={(e) =>
-                            field.onChange(e.target.value as CardStyle)
-                          }
-                        >
-                          <option value="solid">Solid (Pekat)</option>
-                          <option value="glass">Glass (Kaca Transparan)</option>
-                          <option value="outline">
-                            Outline (Garis Tepi Saja)
-                          </option>
-                          <option value="shadow">
-                            Shadow (Bayangan Lembut)
-                          </option>
-                          <option value="neobrutalism">
-                            Neobrutalisme (Bayangan Hitam Tegas)
-                          </option>
-                        </NativeSelect>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <Field orientation="horizontal">
-                    <Controller
-                      control={form.control}
-                      name="hideWatermark"
-                      render={({ field }) => (
-                        <Switch
-                          id="hideWatermark"
-                          // On free the watermark always shows, whatever was saved before.
-                          checked={isPremium && Boolean(field.value)}
-                          disabled={!isPremium}
-                          onCheckedChange={field.onChange}
-                        />
-                      )}
-                    />
-                    <div>
-                      <FieldLabel
-                        htmlFor="hideWatermark"
-                        className="font-medium"
-                      >
-                        Sembunyikan watermark platform
-                      </FieldLabel>
-                      <FieldDescription className="text-xs">
-                        {isPremium
-                          ? "Hapus watermark platform di bagian footer profil publik."
-                          : "Tersedia khusus untuk Member Premium."}
-                      </FieldDescription>
-                    </div>
-                  </Field>
-                </div>
+                </Field>
               </FieldGroup>
             </CardContent>
           </Card>
@@ -532,17 +433,15 @@ export function ProfileEditor({
               Belum tersimpan sampai Anda menekan Simpan.
             </CardDescription>
           </CardHeader>
-          <div
-            className="profile-surface max-h-[42rem] min-h-0 overflow-y-auto border-t"
-            data-theme={live.theme}
-            data-accent={live.accent}
-            style={liveCustomStyles}
-            aria-label="Pratinjau profil"
+          <ProfileSurface
+            look={look}
+            page={false}
+            className="max-h-[42rem] min-h-0 overflow-y-auto border-t"
           >
             <div className="pointer-events-none" inert>
               <ProfileView profile={live} preview />
             </div>
-          </div>
+          </ProfileSurface>
         </Card>
       </div>
     </div>
