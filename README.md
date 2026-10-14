@@ -219,9 +219,11 @@ to visitors.
    download link signed with `AUTH_SECRET`, valid 15 minutes, max 10
    downloads per order. Product files live in `storage/private/` with no public
    URL.
-6. Order emails (Resend, `server/email/`): the buyer gets a payment link
-   right after checkout, then the invoice with a "Buka produk" button once
-   the order is paid; the seller gets a "Pesanan baru" notice. Emails link to
+6. Order emails (Resend, `server/email/`): at checkout a payment-link
+   email is scheduled for 30 minutes later and cancelled if the order is paid
+   first, so a buyer who pays straight away only gets the invoice (with a
+   "Buka produk" button) once the order is paid; the seller gets a "Pesanan
+   baru" notice. Emails link to
    the order page with `?k=`, a key derived from the order's token hash, so
    issuing a new order link also retires emailed ones. Each email claims a
    timestamp on the order before sending and gives it back on failure, so it

@@ -10,14 +10,16 @@ import {
   type EmailDeps,
   sendPaymentLinkEmail,
 } from "./order-emails";
-import { createResendSender } from "./resend";
+import { createResendClient } from "./resend";
 
 /** Email sending from the environment, or null while it is not configured. */
 export function emailDeps(): EmailDeps | null {
   const config = emailConfig();
   if (!config) return null;
+  const { send, cancel } = createResendClient(config);
   return {
-    send: createResendSender(config),
+    send,
+    cancel,
     fromAddress: config.fromAddress,
     siteUrl: siteUrl(),
     secret: authSecret(),

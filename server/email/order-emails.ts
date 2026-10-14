@@ -13,7 +13,7 @@ import { paymentMethodLabel } from "@/lib/payment-methods";
 import { accentHex } from "@/lib/profile-look";
 
 import { orderEmailKey } from "../order-access";
-import type { EmailMessage, SendEmail } from "./resend";
+import type { CancelEmail, EmailMessage, SendEmail } from "./resend";
 import {
   fromHeader,
   paymentLinkEmail,
@@ -23,7 +23,9 @@ import {
 
 /**
  * Which order emails are due, and sending each exactly once:
- * - the buyer's payment link, right after checkout;
+ * - the buyer's payment link, scheduled at checkout for 30 minutes later
+ *   and cancelled if the order is paid first, so a buyer who pays straight
+ *   away only gets the invoice;
  * - the buyer's receipt (invoice and product link) and the seller's notice,
  *   once the order is paid.
  * Each send first claims its timestamp column on the order, so parallel
@@ -31,8 +33,11 @@ import {
  * send gives the claim back so a later trigger retries.
  */
 
+export const PAYMENT_LINK_DELAY_MS = 30 * 60 * 1000;
+
 export type EmailDeps = {
   send: SendEmail;
+  cancel: CancelEmail;
   /** Verified sender address, e.g. pesanan@domain-anda.id. */
   fromAddress: string;
   siteUrl: string;
@@ -51,7 +56,9 @@ async function sendOnce(
   column: EmailColumn,
   message: EmailMessage,
   send: SendEmail,
-  nowMs: number
+  nowMs: number,
+  /** Keeps the id Resend gave the email (to cancel a scheduled one later). */
+  onSent?: (emailId: string) => Promise<unknown>
 ): Promise<SendOutcome> {
   const claimed = await db
     .update(orders)
@@ -60,7 +67,8 @@ async function sendOnce(
     .returning({ id: orders.id });
   if (claimed.length === 0) return "skipped";
   try {
-    await send(message);
+    const emailId = await send(message);
+    if (emailId && onSent) await onSent(emailId);
     return "sent";
   } catch (error) {
     await db
@@ -110,7 +118,7 @@ function orderLinks(
   return { order: `${base}?k=${key}`, invoice: `${base}/invoice?k=${key}` };
 }
 
-/** Sent right after checkout, while the order waits for payment. */
+/** Scheduled at checkout for 30 minutes later; cancelled if the order is paid first. */
 export async function sendPaymentLinkEmail(
   db: Database,
   orderId: string,
@@ -139,10 +147,53 @@ export async function sendPaymentLinkEmail(
       from: fromHeader(loaded.sellerName, deps.fromAddress),
       to: order.buyerEmail,
       idempotencyKey: `payment-link/${order.id}`,
+      scheduledAt: new Date(nowMs + PAYMENT_LINK_DELAY_MS),
     },
     deps.send,
-    nowMs
+    nowMs,
+    (emailId) =>
+      db
+        .update(orders)
+        .set({ paymentLinkEmailId: emailId })
+        .where(eq(orders.id, order.id))
   );
+}
+
+/**
+ * Cancels the scheduled payment link of a paid order while it is still
+ * waiting. Only one trigger gets to try: the id is taken off the order first.
+ */
+async function cancelPaymentLink(
+  db: Database,
+  order: {
+    id: string;
+    paymentLinkEmailId: string | null;
+    paymentLinkEmailedAt: Date | null;
+  },
+  deps: EmailDeps,
+  nowMs: number
+): Promise<"cancelled" | "skipped" | "failed"> {
+  const emailId = order.paymentLinkEmailId;
+  if (!emailId) return "skipped";
+  const taken = await db
+    .update(orders)
+    .set({ paymentLinkEmailId: null })
+    .where(and(eq(orders.id, order.id), eq(orders.paymentLinkEmailId, emailId)))
+    .returning({ id: orders.id });
+  const due =
+    (order.paymentLinkEmailedAt?.getTime() ?? 0) + PAYMENT_LINK_DELAY_MS;
+  if (taken.length === 0 || nowMs >= due) return "skipped";
+  try {
+    await deps.cancel(emailId);
+    return "cancelled";
+  } catch (error) {
+    // Already on its way; its text tells a buyer who paid to ignore it.
+    console.warn(
+      `[email] payment link for order ${order.id} not cancelled`,
+      error
+    );
+    return "failed";
+  }
 }
 
 /** The buyer's receipt and the seller's notice, once the order is paid. Safe to call again. */
@@ -151,11 +202,16 @@ export async function deliverOrderEmails(
   orderId: string,
   deps: EmailDeps,
   nowMs = Date.now()
-): Promise<{ receipt: SendOutcome; seller: SendOutcome }> {
+): Promise<{
+  reminder: "cancelled" | "skipped" | "failed";
+  receipt: SendOutcome;
+  seller: SendOutcome;
+}> {
   const loaded = await loadOrder(db, orderId);
   if (!loaded || loaded.order.status !== "paid")
-    return { receipt: "skipped", seller: "skipped" };
+    return { reminder: "skipped", receipt: "skipped", seller: "skipped" };
   const { order } = loaded;
+  const reminder = await cancelPaymentLink(db, order, deps, nowMs);
   const paidAt = order.paidAt ?? new Date(nowMs);
   const paymentMethod = paymentMethodLabel(loaded.paymentType);
   const hasDelivery = loaded.deliveryType !== "none";
@@ -225,5 +281,5 @@ export async function deliverOrderEmails(
         )
       : "skipped";
 
-  return { receipt, seller };
+  return { reminder, receipt, seller };
 }

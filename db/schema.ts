@@ -323,6 +323,8 @@ export const orders = sqliteTable(
     paymentLinkEmailedAt: integer("payment_link_emailed_at", {
       mode: "timestamp_ms",
     }),
+    /** Resend id of the scheduled payment-link email, cancelled once the order is paid. */
+    paymentLinkEmailId: text("payment_link_email_id"),
     receiptEmailedAt: integer("receipt_emailed_at", { mode: "timestamp_ms" }),
     sellerEmailedAt: integer("seller_emailed_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),

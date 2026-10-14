@@ -187,7 +187,7 @@ export function paymentLinkEmail(input: PaymentLinkEmail): EmailContent {
       sender: input.sellerName,
       accent: input.accent,
       heading: "Pesanan menunggu pembayaran",
-      intro: `Halo ${escapeHtml(input.buyerName)}, pesanan Anda sudah dibuat. Kalau halaman pembayaran tadi tertutup, lanjutkan lewat tombol di bawah.`,
+      intro: `Halo ${escapeHtml(input.buyerName)}, pesanan Anda masih menunggu pembayaran. Kalau halaman pembayaran tadi tertutup, lanjutkan lewat tombol di bawah.`,
       button: { label: "Lanjutkan pembayaran", url: input.orderUrl },
       blocks: [rowsTable(rows)],
       footer: `Sudah membayar? Abaikan email ini; invoice dikirim begitu pembayaran diterima.<br>Dikirim oleh ${escapeHtml(input.brandName)} untuk ${escapeHtml(input.sellerName)}.`,
@@ -195,7 +195,7 @@ export function paymentLinkEmail(input: PaymentLinkEmail): EmailContent {
     text: textBody([
       `Pesanan menunggu pembayaran`,
       ``,
-      `Halo ${input.buyerName}, pesanan Anda sudah dibuat. Kalau halaman pembayaran tadi tertutup, lanjutkan di sini:`,
+      `Halo ${input.buyerName}, pesanan Anda masih menunggu pembayaran. Kalau halaman pembayaran tadi tertutup, lanjutkan di sini:`,
       input.orderUrl,
       ``,
       ...rows.map((row) => `${row.label}: ${row.value}`),

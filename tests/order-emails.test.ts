@@ -19,7 +19,7 @@ import {
   sendPaymentLinkEmail,
 } from "@/server/email/order-emails";
 import {
-  createResendSender,
+  createResendClient,
   EmailError,
   type EmailMessage,
 } from "@/server/email/resend";
@@ -60,20 +60,25 @@ const gateway: PaymentGateway = {
   },
 };
 
-/** Collects messages; fails while `failing` is set. */
+/** Collects messages and cancellations; sending fails while `failing` is set. */
 function recorder() {
   const sent: EmailMessage[] = [];
+  const cancelled: string[] = [];
   const state = { failing: false };
   const deps: EmailDeps = {
     async send(message) {
       if (state.failing) throw new EmailError("down");
       sent.push(message);
+      return `email-${sent.length}`;
+    },
+    async cancel(emailId) {
+      cancelled.push(emailId);
     },
     fromAddress: "pesanan@toko.example.id",
     siteUrl: SITE,
     secret: SECRET,
   };
-  return { sent, state, deps };
+  return { sent, cancelled, state, deps };
 }
 
 async function newOrder(buyerName = "Budi <b>") {
@@ -268,30 +273,77 @@ describe("order links in emails", () => {
 });
 
 describe("sending", () => {
-  test("the payment link goes out once, while the order waits", async () => {
+  test("the payment link is scheduled once, 30 minutes after checkout", async () => {
     const { sent, deps } = recorder();
     const { order } = await newOrder();
-    assert.equal(await sendPaymentLinkEmail(db, order.id, deps), "sent");
-    assert.equal(await sendPaymentLinkEmail(db, order.id, deps), "skipped");
+    const now = Date.now();
+    assert.equal(await sendPaymentLinkEmail(db, order.id, deps, now), "sent");
+    assert.equal(
+      await sendPaymentLinkEmail(db, order.id, deps, now),
+      "skipped"
+    );
     assert.equal(sent.length, 1);
     assert.equal(sent[0]?.to, "budi@example.id");
     assert.equal(sent[0]?.idempotencyKey, `payment-link/${order.id}`);
+    assert.equal(sent[0]?.scheduledAt?.getTime(), now + 30 * 60 * 1000);
     assert.match(sent[0]?.text ?? "", /\/pesanan\/LB-[A-Z0-9]{8}\?k=/);
+    const stored = await db.query.orders.findFirst({
+      where: eq(orders.id, order.id),
+    });
+    assert.equal(stored?.paymentLinkEmailId, "email-1");
+  });
+
+  test("paying within 30 minutes cancels the payment link; later it is left alone", async () => {
+    const quick = recorder();
+    const first = await newOrder("Budi");
+    const now = Date.now();
+    await sendPaymentLinkEmail(db, first.order.id, quick.deps, now);
+    await markPaid(first.order.code);
+    const result = await deliverOrderEmails(
+      db,
+      first.order.id,
+      quick.deps,
+      now + 60_000
+    );
+    assert.equal(result.reminder, "cancelled");
+    assert.deepEqual(quick.cancelled, ["email-1"]);
+    // Only one trigger cancels.
+    assert.equal(
+      (await deliverOrderEmails(db, first.order.id, quick.deps, now + 61_000))
+        .reminder,
+      "skipped"
+    );
+
+    const slow = recorder();
+    const second = await newOrder("Budi");
+    await sendPaymentLinkEmail(db, second.order.id, slow.deps, now);
+    await markPaid(second.order.code);
+    const late = await deliverOrderEmails(
+      db,
+      second.order.id,
+      slow.deps,
+      now + 31 * 60_000
+    );
+    assert.equal(late.reminder, "skipped", "already sent, nothing to cancel");
+    assert.deepEqual(slow.cancelled, []);
   });
 
   test("a paid order sends the receipt to the buyer and the notice to the seller, once", async () => {
     const { sent, deps } = recorder();
     const { order } = await newOrder("Budi");
     assert.deepEqual(await deliverOrderEmails(db, order.id, deps), {
+      reminder: "skipped",
       receipt: "skipped",
       seller: "skipped",
     });
     await markPaid(order.code);
     assert.deepEqual(await deliverOrderEmails(db, order.id, deps), {
+      reminder: "skipped",
       receipt: "sent",
       seller: "sent",
     });
     assert.deepEqual(await deliverOrderEmails(db, order.id, deps), {
+      reminder: "skipped",
       receipt: "skipped",
       seller: "skipped",
     });
@@ -310,11 +362,13 @@ describe("sending", () => {
     await markPaid(order.code);
     state.failing = true;
     assert.deepEqual(await deliverOrderEmails(db, order.id, deps), {
+      reminder: "skipped",
       receipt: "failed",
       seller: "failed",
     });
     state.failing = false;
     assert.deepEqual(await deliverOrderEmails(db, order.id, deps), {
+      reminder: "skipped",
       receipt: "sent",
       seller: "sent",
     });
@@ -323,34 +377,42 @@ describe("sending", () => {
 });
 
 describe("Resend", () => {
-  test("posts the message with the idempotency key", async () => {
-    let request: { url: string; init: RequestInit } | null = null;
-    const send = createResendSender(
+  test("posts the message with the idempotency key and schedule, and cancels by id", async () => {
+    const requests: { url: string; init: RequestInit }[] = [];
+    const { send, cancel } = createResendClient(
       { apiKey: "re_test", fromAddress: "pesanan@toko.example.id" },
       async (url, init) => {
-        request = { url: String(url), init: init ?? {} };
+        requests.push({ url: String(url), init: init ?? {} });
         return Response.json({ id: "email-1" });
       }
     );
-    await send({
+    const id = await send({
       from: "Toko <pesanan@toko.example.id>",
       to: "budi@example.id",
       subject: "Halo",
       html: "<p>Halo</p>",
       text: "Halo",
       idempotencyKey: "receipt/1",
+      scheduledAt: new Date(Date.UTC(2026, 9, 14, 3, 30)),
     });
-    assert.equal(request!.url, "https://api.resend.com/emails");
-    const headers = request!.init.headers as Record<string, string>;
+    assert.equal(id, "email-1");
+    const [request] = requests;
+    assert.equal(request?.url, "https://api.resend.com/emails");
+    const headers = request?.init.headers as Record<string, string>;
     assert.equal(headers.Authorization, "Bearer re_test");
     assert.equal(headers["Idempotency-Key"], "receipt/1");
-    assert.deepEqual(JSON.parse(String(request!.init.body)).to, [
-      "budi@example.id",
-    ]);
+    const body = JSON.parse(String(request?.init.body));
+    assert.deepEqual(body.to, ["budi@example.id"]);
+    assert.equal(body.scheduled_at, "2026-10-14T03:30:00.000Z");
+    await cancel("email-1");
+    assert.equal(
+      requests[1]?.url,
+      "https://api.resend.com/emails/email-1/cancel"
+    );
   });
 
   test("a refused email throws, so the claim is given back", async () => {
-    const send = createResendSender(
+    const { send } = createResendClient(
       { apiKey: "re_test", fromAddress: "pesanan@toko.example.id" },
       async () =>
         Response.json({ message: "domain not verified" }, { status: 403 })
@@ -369,7 +431,7 @@ describe("Resend", () => {
   });
 
   test("a reused idempotency key counts as already sent", async () => {
-    const send = createResendSender(
+    const { send } = createResendClient(
       { apiKey: "re_test", fromAddress: "pesanan@toko.example.id" },
       async () => Response.json({ message: "conflict" }, { status: 409 })
     );

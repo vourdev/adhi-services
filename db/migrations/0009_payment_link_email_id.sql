@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `payment_link_email_id` text;
