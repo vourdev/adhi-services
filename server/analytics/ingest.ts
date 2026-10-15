@@ -1,4 +1,4 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import {
@@ -48,7 +48,14 @@ export type ClientEventInput = {
 
 export type IngestResult =
   | { recorded: true; source: TrafficSource }
+  | { recorded: false; reason: "repeat"; source: TrafficSource }
   | { recorded: false; reason: "duplicate" | "unknown_target" | "unpublished" };
+
+/**
+ * A browser viewing the same page again within this window (a reload, going
+ * back to the profile) is the same visit and is counted once.
+ */
+export const VIEW_DEDUPE_MS = 30 * 60 * 1000;
 
 /** Source for a page view: in-site navigation keeps the session's original source. */
 export function resolveSource(
@@ -126,6 +133,30 @@ export async function ingestClientEvent(
     { referrer: input.referrer ?? null, utmSource, utmMedium },
     context
   );
+
+  if (context.visitorId) {
+    const recent = await db
+      .select({ id: analyticsEvents.id })
+      .from(analyticsEvents)
+      .where(
+        and(
+          eq(analyticsEvents.visitorId, context.visitorId),
+          eq(analyticsEvents.eventType, input.type),
+          eq(analyticsEvents.profileId, profile.id),
+          productId
+            ? eq(analyticsEvents.productId, productId)
+            : isNull(analyticsEvents.productId),
+          gt(analyticsEvents.occurredAt, nowMs - VIEW_DEDUPE_MS)
+        )
+      )
+      .limit(1);
+    if (recent.length > 0)
+      return {
+        recorded: false,
+        reason: "repeat",
+        source: context.sessionSource ?? source,
+      };
+  }
 
   const inserted = await db
     .insert(analyticsEvents)

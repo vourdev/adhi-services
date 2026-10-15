@@ -20,6 +20,6 @@ export const DEVICE_LABELS: Record<Device, string> = {
 };
 
 export const UNIQUE_VISITOR_HINT =
-  "Jumlah browser berbeda (cookie acak pihak pertama) yang membuka profil di periode ini. Ini menghitung browser, bukan orang: satu orang di dua perangkat terhitung dua.";
+  "Jumlah browser berbeda (cookie acak pihak pertama) yang membuka profil atau halaman produk di periode ini. Ini menghitung browser, bukan orang: satu orang di dua perangkat, atau di browser Instagram lalu Chrome, terhitung dua.";
 export const CTR_HINT =
   "Klik link ÷ tayangan profil × 100. Link CTR memakai penyebut yang sama, jadi jumlahnya sama dengan CTR total.";

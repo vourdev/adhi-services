@@ -20,7 +20,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from(profiles)
     .innerJoin(users, eq(users.id, profiles.ownerId))
     .where(and(eq(profiles.isPublished, true), eq(users.status, "active")));
-  const entries: MetadataRoute.Sitemap = [];
+  const entries: MetadataRoute.Sitemap = [
+    "/syarat-ketentuan",
+    "/kebijakan-refund",
+    "/faq",
+    "/kontak",
+    "/privasi",
+  ].map((path) => ({ url: `${base}${path}`, priority: 0.3 }));
 
   for (const profile of published) {
     entries.push({

@@ -402,6 +402,10 @@ export async function getPlatformSettings(
     brandName: "Adhi Web Services",
     brandTagline: "Satu link untuk segala profil dan produk Anda",
     brandLogoUrl: null,
+    businessName: null,
+    contactEmail: null,
+    contactPhone: null,
+    businessAddress: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -413,11 +417,31 @@ export async function updatePlatformSettings(
     brandName: string;
     brandTagline?: string;
     brandLogoUrl?: string;
+    /** Left out: unchanged. Empty string: cleared. */
+    businessName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    businessAddress?: string;
   }
 ) {
   const brandName = input.brandName.trim();
   if (!brandName) {
     return { ok: false, error: "Nama brand wajib diisi." };
+  }
+  const contact: Partial<
+    Record<
+      "businessName" | "contactEmail" | "contactPhone" | "businessAddress",
+      string | null
+    >
+  > = {};
+  for (const key of [
+    "businessName",
+    "contactEmail",
+    "contactPhone",
+    "businessAddress",
+  ] as const) {
+    const value = input[key];
+    if (value !== undefined) contact[key] = value.trim() || null;
   }
 
   await db
@@ -427,6 +451,7 @@ export async function updatePlatformSettings(
       brandName,
       brandTagline: input.brandTagline?.trim() || null,
       brandLogoUrl: input.brandLogoUrl?.trim() || null,
+      ...contact,
     })
     .onConflictDoUpdate({
       target: platformSettings.id,
@@ -434,6 +459,7 @@ export async function updatePlatformSettings(
         brandName,
         brandTagline: input.brandTagline?.trim() || null,
         brandLogoUrl: input.brandLogoUrl?.trim() || null,
+        ...contact,
         updatedAt: new Date(),
       },
     });

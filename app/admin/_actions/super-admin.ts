@@ -130,6 +130,10 @@ export async function updatePlatformSettingsAction(
     brandName: parsed.data.brandName,
     brandTagline: parsed.data.brandTagline ?? "",
     brandLogoUrl: parsed.data.brandLogoUrl ?? "",
+    businessName: parsed.data.businessName ?? "",
+    contactEmail: parsed.data.contactEmail ?? "",
+    contactPhone: parsed.data.contactPhone ?? "",
+    businessAddress: parsed.data.businessAddress ?? "",
   });
   if (!result.ok)
     return { ok: false, error: result.error ?? "Gagal menyimpan." };

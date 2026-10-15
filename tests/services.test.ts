@@ -321,9 +321,29 @@ describe("analytics", () => {
       referrer: "https://l.instagram.com/",
     };
     const first = await ingestClientEvent(db, event, visitor("v1"));
-    const second = await ingestClientEvent(db, event, visitor("v1"));
+    const second = await ingestClientEvent(db, event, visitor("v1-other"));
     assert.deepEqual(first, { recorded: true, source: "social" });
     assert.deepEqual(second, { recorded: false, reason: "duplicate" });
+  });
+
+  test("the same browser reopening a page within 30 minutes is one view", async () => {
+    const view = (nowMs: number) =>
+      ingestClientEvent(
+        db,
+        { type: "profile_view", eventKey: crypto.randomUUID(), profileId },
+        visitor("reloader"),
+        nowMs
+      );
+    const start = Date.now() - 2 * 60 * 60 * 1000;
+    assert.equal((await view(start)).recorded, true);
+    const reload = await view(start + 5 * 60 * 1000);
+    assert.equal(reload.recorded, false);
+    assert.equal(!reload.recorded && reload.reason, "repeat");
+    assert.equal((await view(start + 31 * 60 * 1000)).recorded, true);
+    // Cleans up so the totals below only see their own visitors.
+    await db
+      .delete(analyticsEvents)
+      .where(eq(analyticsEvents.visitorId, "reloader"));
   });
 
   test("events for unknown profiles or another profile's products are refused", async () => {
@@ -340,12 +360,18 @@ describe("analytics", () => {
   });
 
   test("totals, unique visitors, CTR and top links come from stored events", async () => {
-    // v1 already viewed once; v2 views twice, v3 once.
-    for (const id of ["v2", "v2", "v3"]) {
+    // v1 already viewed once; v2 views twice (40 minutes apart), v3 once.
+    const now = Date.now();
+    for (const [id, at] of [
+      ["v2", now - 40 * 60 * 1000],
+      ["v2", now],
+      ["v3", now],
+    ] as const) {
       await ingestClientEvent(
         db,
         { type: "profile_view", eventKey: crypto.randomUUID(), profileId },
-        visitor(id)
+        visitor(id),
+        at
       );
     }
     assert.equal(
@@ -819,6 +845,20 @@ describe("direct checkout, webhook and delivery", () => {
     assert.equal(metrics.paidOrders, 1);
     assert.equal(metrics.revenue, 25000);
     assert.equal(bestSellers[0]?.productId, productId);
+  });
+
+  test("a visitor who only opens a product page is a unique visitor, not a profile view", async () => {
+    const range = parseRange({ range: "7d" });
+    const before = await getOverviewTotals(db, profileId, range);
+    const result = await ingestClientEvent(
+      db,
+      { type: "product_view", eventKey: crypto.randomUUID(), profileId, productId },
+      visitor("product-only")
+    );
+    assert.equal(result.recorded, true);
+    const after = await getOverviewTotals(db, profileId, range);
+    assert.equal(after.uniqueVisitors, before.uniqueVisitors + 1);
+    assert.equal(after.profileViews, before.profileViews);
   });
 
   test("products with orders cannot be deleted", async () => {

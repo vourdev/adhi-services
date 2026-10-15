@@ -70,12 +70,15 @@ export async function getOverviewTotals(
   const [row] = await db
     .select({
       profileViews: sql<number>`sum(case when ${analyticsEvents.eventType} = 'profile_view' then 1 else 0 end)`,
-      uniqueVisitors: sql<number>`count(distinct case when ${analyticsEvents.eventType} = 'profile_view' then ${analyticsEvents.visitorId} end)`,
-      sessions: sql<number>`count(distinct case when ${analyticsEvents.eventType} = 'profile_view' then ${analyticsEvents.sessionId} end)`,
+      // A visitor is anyone who opened the profile or one of its product pages.
+      uniqueVisitors: sql<number>`count(distinct case when ${analyticsEvents.eventType} in ('profile_view', 'product_view') then ${analyticsEvents.visitorId} end)`,
+      sessions: sql<number>`count(distinct case when ${analyticsEvents.eventType} in ('profile_view', 'product_view') then ${analyticsEvents.sessionId} end)`,
       linkClicks: sql<number>`sum(case when ${analyticsEvents.eventType} = 'link_click' then 1 else 0 end)`,
     })
     .from(analyticsEvents)
-    .where(inRange(profileId, range, ["profile_view", "link_click"]));
+    .where(
+      inRange(profileId, range, ["profile_view", "product_view", "link_click"])
+    );
 
   const profileViews = num(row?.profileViews);
   const linkClicks = num(row?.linkClicks);
@@ -146,11 +149,13 @@ export async function getTrafficSeries(
     .select({
       date: dayBucket,
       views: sql<number>`sum(case when ${analyticsEvents.eventType} = 'profile_view' then 1 else 0 end)`,
-      visitors: sql<number>`count(distinct case when ${analyticsEvents.eventType} = 'profile_view' then ${analyticsEvents.visitorId} end)`,
+      visitors: sql<number>`count(distinct case when ${analyticsEvents.eventType} in ('profile_view', 'product_view') then ${analyticsEvents.visitorId} end)`,
       clicks: sql<number>`sum(case when ${analyticsEvents.eventType} = 'link_click' then 1 else 0 end)`,
     })
     .from(analyticsEvents)
-    .where(inRange(profileId, range, ["profile_view", "link_click"]))
+    .where(
+      inRange(profileId, range, ["profile_view", "product_view", "link_click"])
+    )
     .groupBy(dayBucket);
 
   const byDate = new Map(rows.map((row) => [row.date, row]));

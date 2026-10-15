@@ -476,6 +476,12 @@ export const platformSettings = sqliteTable("platform_settings", {
     "Satu link untuk segala profil dan produk Anda"
   ),
   brandLogoUrl: text("brand_logo_url"),
+  // Business contact for the Kontak, terms and refund pages. Entered by the
+  // super admin; a page leaves out whatever is empty.
+  businessName: text("business_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  businessAddress: text("business_address"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

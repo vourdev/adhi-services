@@ -165,8 +165,10 @@ export function detectDevice(userAgent: string | null | undefined): Device {
   return "unknown";
 }
 
+// Named fetchers only. Plain words like "telegram" or "pinterest" also appear
+// in the user agents of real people browsing inside those apps.
 const BOT_PATTERN =
-  /bot|crawl|spider|slurp|scrap|preview|facebookexternalhit|meta-externalagent|whatsapp|telegram|discord|skype|slack|embedly|quora link|vkshare|pinterest\/|bitly|headless|lighthouse|pagespeed|ptst|gtmetrix|curl\/|wget\/|python-requests|httpclient|axios\/|node-fetch|go-http-client|java\/|okhttp|monitor|uptime/i;
+  /bot\/|bot;|bot\)|bot-|bot$|crawl|spider|slurp|scrap|facebookexternalhit|facebookcatalog|meta-externalagent|whatsapp\/|telegrambot|discordbot|skypeuripreview|slackbot|slack-imgproxy|embedly|quora link preview|vkshare|pinterestbot|bitlybot|iframely|google-pagerenderer|googleother|headless|lighthouse|pagespeed|ptst|gtmetrix|curl\/|wget\/|python-requests|httpclient|axios\/|node-fetch|go-http-client|java\/|okhttp|uptimerobot|pingdom|statuscake|site24x7/i;
 
 /** Link-preview fetchers, crawlers and scripted clients. Their requests are not counted. */
 export function isBot(userAgent: string | null | undefined): boolean {

@@ -656,6 +656,24 @@ export const platformSettingsSchema = z.object({
     .max(60, "Maksimal 60 karakter."),
   brandTagline: optionalText(120),
   brandLogoUrl: optionalImageUrl,
+  businessName: optionalText(100),
+  contactEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .transform((value) => (value === "" ? null : value))
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null)
+    .refine(
+      (value) => value === null || z.email().safeParse(value).success,
+      "Email kontak tidak valid."
+    ),
+  contactPhone: optionalText(30).refine(
+    (value) => value === null || /^\+?[0-9][0-9 ()-]{6,}$/.test(value),
+    "Nomor telepon tidak valid. Contoh: 0812 3456 7890."
+  ),
+  businessAddress: optionalText(300),
 });
 
 export const changePasswordSchema = z

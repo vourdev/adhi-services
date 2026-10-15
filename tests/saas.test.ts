@@ -237,6 +237,24 @@ describe("SaaS Multi-Tenant Management", () => {
     assert.equal(updated.brandName, "Adhi Bio Platform");
     assert.equal(updated.brandTagline, "Platform Link Bio & Toko Digital");
 
+    await updatePlatformSettings(db, {
+      brandName: "Adhi Bio Platform",
+      contactEmail: " halo@example.id ",
+      contactPhone: "0812 3456 7890",
+      businessAddress: "",
+    });
+    const withContact = await getPlatformSettings(db);
+    assert.equal(withContact.contactEmail, "halo@example.id");
+    assert.equal(withContact.contactPhone, "0812 3456 7890");
+    assert.equal(withContact.businessAddress, null);
+
+    // Saving the brand alone leaves the contact as it was.
+    await updatePlatformSettings(db, { brandName: "Adhi Bio Platform" });
+    assert.equal(
+      (await getPlatformSettings(db)).contactEmail,
+      "halo@example.id"
+    );
+
     const overview = await getPlatformOverview(db);
     assert.ok(overview.totalUsers >= 4);
     assert.ok(overview.totalProfiles >= 4);

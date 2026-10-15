@@ -71,6 +71,13 @@
       "when": 1791947899185,
       "tag": "0009_payment_link_email_id",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792055988231,
+      "tag": "0010_platform_contact",
+      "breakpoints": true
     }
   ]
 }

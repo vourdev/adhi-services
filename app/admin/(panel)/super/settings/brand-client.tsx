@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { PlatformSettings } from "@/db/schema";
 
 import { updatePlatformSettingsAction } from "@/app/admin/_actions/super-admin";
@@ -73,6 +74,61 @@ export function BrandClient({ settings }: { settings: PlatformSettings }) {
                   onChange={(e) => setBrandTagline(e.target.value)}
                   placeholder="Satu link untuk segala profil dan produk Anda"
                 />
+              </div>
+
+              <div className="space-y-4 border-t pt-4">
+                <div>
+                  <p className="text-sm font-medium">Kontak usaha</p>
+                  <p className="text-xs text-muted-foreground">
+                    Tampil di halaman Kontak, Syarat & Ketentuan, Kebijakan
+                    Refund, dan FAQ. Kolom yang kosong tidak ditampilkan.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="business-name">Nama usaha</Label>
+                  <Input
+                    id="business-name"
+                    name="businessName"
+                    maxLength={100}
+                    defaultValue={settings.businessName ?? ""}
+                    placeholder="Nama usaha atau nama pemilik"
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="contact-email">Email kontak</Label>
+                    <Input
+                      id="contact-email"
+                      name="contactEmail"
+                      type="email"
+                      defaultValue={settings.contactEmail ?? ""}
+                      placeholder="nama@domain.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="contact-phone">Nomor telepon</Label>
+                    <Input
+                      id="contact-phone"
+                      name="contactPhone"
+                      type="tel"
+                      inputMode="tel"
+                      maxLength={30}
+                      defaultValue={settings.contactPhone ?? ""}
+                      placeholder="08xx xxxx xxxx"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="business-address">Alamat usaha</Label>
+                  <Textarea
+                    id="business-address"
+                    name="businessAddress"
+                    rows={3}
+                    maxLength={300}
+                    defaultValue={settings.businessAddress ?? ""}
+                    placeholder="Jalan, nomor, kelurahan, kecamatan, kota, kode pos"
+                  />
+                </div>
               </div>
             </CardContent>
 

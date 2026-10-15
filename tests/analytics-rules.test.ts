@@ -167,6 +167,33 @@ describe("device and bot detection", () => {
       false
     );
   });
+
+  test("named fetchers are bots", () => {
+    for (const ua of [
+      "TelegramBot (like TwitterBot)",
+      "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+      "Pinterestbot/1.0 (+http://www.pinterest.com/bot.html)",
+      "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
+      "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)",
+      "Mozilla/5.0 (compatible; UptimeRobot/2.0; http://www.uptimerobot.com/)",
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0 Safari/537.36",
+      "python-requests/2.32.3",
+    ])
+      assert.equal(isBot(ua), true, ua);
+  });
+
+  test("people browsing inside apps are not bots", () => {
+    for (const ua of [
+      // Telegram's in-app browser on Android
+      "Mozilla/5.0 (Linux; Android 13; SM-A536E) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0 Mobile Safari/537.36 Telegram-Android/11.2.0",
+      "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36 [Pinterest/Android]",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/470.0]",
+      "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36 trill_360000 BytedanceWebview/d8a21c6",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/14.10.0",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36",
+    ])
+      assert.equal(isBot(ua), false, ua);
+  });
 });
 
 describe("date ranges (WIB)", () => {

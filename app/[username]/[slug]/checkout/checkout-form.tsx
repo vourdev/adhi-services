@@ -336,10 +336,19 @@ export function CheckoutForm({
           )}
         </button>
         <p className="text-center text-[12px] leading-relaxed text-p-muted">
-          Data di atas hanya dipakai untuk memproses pesanan ini.{" "}
+          Dengan membayar, Anda menyetujui{" "}
+          <Link href="/syarat-ketentuan" className="underline underline-offset-2">
+            Syarat & Ketentuan
+          </Link>{" "}
+          dan{" "}
+          <Link href="/kebijakan-refund" className="underline underline-offset-2">
+            Kebijakan Refund
+          </Link>
+          . Data di atas hanya dipakai untuk memproses pesanan ini (
           <Link href="/privasi" className="underline underline-offset-2">
             Privasi
           </Link>
+          ).
         </p>
       </aside>
     </form>

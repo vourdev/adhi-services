@@ -51,11 +51,13 @@ export async function POST(request: NextRequest) {
   if (!parsed.success)
     return NextResponse.json({ error: "invalid_event" }, { status: 400 });
 
-  if (await skipReason(request)) return noContent();
+  if (await skipReason(request, parsed.data.profileId)) return noContent();
 
   const visitor = readVisitor(request);
   const result = await ingestClientEvent(getDb(), parsed.data, visitor);
   const response = noContent();
-  if (result.recorded) writeVisitor(response, visitor, result.source);
+  // A repeat view still keeps the visit (session cookie) alive.
+  if (result.recorded || result.reason === "repeat")
+    writeVisitor(response, visitor, result.source);
   return response;
 }
