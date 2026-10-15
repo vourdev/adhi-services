@@ -272,28 +272,6 @@ export default async function ProductPage({
               </section>
             ) : null}
 
-            <section
-              aria-label="Penjual"
-              className="p-card flex items-center gap-3.5 p-4"
-            >
-              <SellerAvatar
-                name={profile.displayName}
-                src={profile.avatarUrl}
-                size="md"
-              />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-[12.5px] text-p-muted">Dijual oleh</span>
-                <span className="truncate font-semibold">
-                  {profile.displayName}
-                </span>
-              </div>
-              <Link
-                href={sellerPath}
-                className="p-tile p-press flex h-10 shrink-0 items-center rounded-[var(--p-r-btn)] px-4 text-[13.5px] font-semibold"
-              >
-                Lihat profil
-              </Link>
-            </section>
           </div>
         </main>
 
