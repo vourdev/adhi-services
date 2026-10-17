@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/profile/icon";
 import { getDb } from "@/db/client";
-import { orderItems, paymentTransactions } from "@/db/schema";
+import { paymentTransactions } from "@/db/schema";
 import type { OrderStatus } from "@/lib/domain";
 import { authSecret, siteUrl } from "@/lib/env";
 import { formatDateTime, formatRupiah } from "@/lib/format";
@@ -62,15 +62,14 @@ export default async function InvoicePage({
     secret: authSecret(),
   });
   if (!found) notFound();
-  const { order, product, profile } = found;
-  const [item, transaction, platform] = await Promise.all([
-    db.query.orderItems.findFirst({ where: eq(orderItems.orderId, order.id) }),
+  const { order, lines, profile } = found;
+  const [transaction, platform] = await Promise.all([
     db.query.paymentTransactions.findFirst({
       where: eq(paymentTransactions.orderId, order.id),
     }),
     getPlatformSettings(db),
   ]);
-  const listAmount = item?.listAmount ?? order.amount + order.discountAmount;
+  const listAmount = lines.reduce((sum, line) => sum + line.listAmount, 0);
   const method = paymentMethodLabel(transaction?.paymentType);
   const status = STATUS[order.status];
   const host = new URL(siteUrl()).host;
@@ -152,15 +151,15 @@ export default async function InvoicePage({
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-[#e3e6eb]">
-                <td className="py-3 pr-4 font-medium">
-                  {item?.productName ?? product.name}
-                </td>
-                <td className="py-3 text-right tabular-nums">1</td>
-                <td className="py-3 text-right tabular-nums">
-                  {formatRupiah(listAmount)}
-                </td>
-              </tr>
+              {lines.map((line) => (
+                <tr key={line.productId} className="border-b border-[#e3e6eb]">
+                  <td className="py-3 pr-4 font-medium">{line.name}</td>
+                  <td className="py-3 text-right tabular-nums">1</td>
+                  <td className="py-3 text-right tabular-nums">
+                    {formatRupiah(line.listAmount)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 

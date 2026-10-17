@@ -10,6 +10,7 @@ import { getDb } from "@/db/client";
 import { lookFromProfile } from "@/lib/profile-look";
 import { normalizeUsername } from "@/lib/validation";
 import { loadProfile } from "@/server/public-data";
+import { cartProducts, readCart } from "@/server/cart";
 import { getPlatformSettings } from "@/server/platform-settings";
 
 type Props = { params: Promise<{ username: string }> };
@@ -62,7 +63,10 @@ export default async function ProfilePage({
   if (profile.coverUrl)
     preload(profile.coverUrl, { as: "image", fetchPriority: "high" });
 
-  const platform = await getPlatformSettings(getDb());
+  const [platform, cart] = await Promise.all([
+    getPlatformSettings(getDb()),
+    readCart().then((ids) => cartProducts(profile.id, ids)),
+  ]);
 
   return (
     <ProfileSurface look={lookFromProfile(profile)}>
@@ -81,6 +85,7 @@ export default async function ProfilePage({
       ) : null}
       <ProfileView
         profile={profile}
+        cartCount={cart.length}
         footer={
           <ProfileFooter
             name={profile.displayName}

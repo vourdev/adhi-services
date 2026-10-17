@@ -15,13 +15,14 @@ import type { ReactNode } from "react";
 import { Icon } from "@/components/profile/icon";
 import { ProfileSurface } from "@/components/profile/profile-view";
 import { getDb } from "@/db/client";
-import { digitalDeliveries, paymentTransactions, profiles } from "@/db/schema";
+import { paymentTransactions, profiles } from "@/db/schema";
 import { ORDER_STATUS_LABELS } from "@/lib/domain";
 import { authSecret } from "@/lib/env";
 import { formatDateTime, formatRupiah } from "@/lib/format";
 import { buildWhatsAppUrl, isValidWhatsAppNumber } from "@/lib/whatsapp";
 import {
   findOrderForBuyer,
+  loadOrderLines,
   refreshOrderStatus,
   signedDownloadPath,
 } from "@/server/checkout";
@@ -79,11 +80,9 @@ export default async function OrderPage({
     secret: authSecret(),
   });
   if (!found) notFound();
-  let { order } = found;
-  const { product, delivery } = found;
+  let { order, lines } = found;
 
-  const gateway =
-    order.status === "pending" ? getPaymentGateway() : null;
+  const gateway = order.status === "pending" ? getPaymentGateway() : null;
   if (order.status === "pending" && gateway) {
     try {
       const status = await refreshOrderStatus(db, gateway, order);
@@ -107,23 +106,32 @@ export default async function OrderPage({
   // Retries an order email that failed earlier; nothing is sent twice.
   if (order.status === "paid") scheduleOrderEmails(order.id);
 
-  // After a successful payment, the delivery row exists (created by the webhook or the refresh above).
-  const freshDelivery =
-    delivery ??
-    (order.status === "paid"
-      ? ((await db.query.digitalDeliveries.findFirst({
-          where: eq(digitalDeliveries.orderId, order.id),
-        })) ?? null)
-      : null);
-  const downloadPath =
-    order.status === "paid" && freshDelivery
-      ? signedDownloadPath(freshDelivery.id, authSecret())
-      : null;
+  // The refresh above may have just created the download grants.
+  if (
+    order.status === "paid" &&
+    lines.some((line) => line.deliveryType !== "none" && !line.delivery)
+  )
+    lines = await loadOrderLines(db, order.id);
+  const downloads =
+    order.status === "paid"
+      ? lines.flatMap((line) =>
+          line.delivery
+            ? [
+                {
+                  line,
+                  delivery: line.delivery,
+                  path: signedDownloadPath(line.delivery.id, authSecret()),
+                },
+              ]
+            : []
+        )
+      : [];
+  const productNames = lines.map((line) => line.name).join(", ");
   const contactHref =
     profile.whatsappNumber && isValidWhatsAppNumber(profile.whatsappNumber)
       ? buildWhatsAppUrl(
           profile.whatsappNumber,
-          `Halo, saya ingin bertanya tentang pesanan ${order.code} (${product.name}).`
+          `Halo, saya ingin bertanya tentang pesanan ${order.code} (${productNames}).`
         )
       : null;
 
@@ -156,7 +164,11 @@ export default async function OrderPage({
             <dt className="text-p-muted">Nomor pesanan</dt>
             <dd className="text-right font-mono font-medium">{order.code}</dd>
             <dt className="text-p-muted">Produk</dt>
-            <dd className="text-right font-medium">{product.name}</dd>
+            <dd className="flex flex-col items-end gap-1 text-right font-medium">
+              {lines.map((line) => (
+                <span key={line.productId}>{line.name}</span>
+              ))}
+            </dd>
             {order.discountCode ? (
               <>
                 <dt className="text-p-muted">Kode diskon</dt>
@@ -183,25 +195,33 @@ export default async function OrderPage({
         </section>
 
         {order.status === "paid" ? (
-          downloadPath ? (
+          downloads.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <a
-                href={downloadPath}
-                rel="nofollow"
-                className={`${buttonClass} p-btn bg-p-accent text-p-accent-fg`}
-              >
-                <Icon icon={Download04Icon} className="size-5" />
-                {product.deliveryType === "link"
-                  ? "Buka produk"
-                  : "Unduh produk"}
-              </a>
+              {downloads.map(({ line, delivery, path }) => (
+                <a
+                  key={line.productId}
+                  href={path}
+                  rel="nofollow"
+                  className={`${buttonClass} p-btn bg-p-accent text-p-accent-fg`}
+                >
+                  <Icon icon={Download04Icon} className="size-5" />
+                  <span className="truncate">
+                    {line.deliveryType === "link" ? "Buka" : "Unduh"}{" "}
+                    {downloads.length > 1 ? line.name : "produk"}
+                  </span>
+                  <span className="sr-only">
+                    (sisa{" "}
+                    {Math.max(
+                      0,
+                      delivery.maxDownloads - delivery.downloadCount
+                    )}{" "}
+                    kali)
+                  </span>
+                </a>
+              ))}
               <p className="text-center text-xs text-p-muted">
                 Simpan halaman ini. Link unduhan diperbarui setiap kali halaman
-                dibuka
-                {freshDelivery
-                  ? ` (sisa ${Math.max(0, freshDelivery.maxDownloads - freshDelivery.downloadCount)} kali unduh)`
-                  : ""}
-                .
+                dibuka.
               </p>
             </div>
           ) : (
@@ -245,7 +265,11 @@ export default async function OrderPage({
         order.status === "expired" ||
         order.status === "cancelled" ? (
           <Link
-            href={`/${profile.username}/${product.slug}`}
+            href={
+              lines.length === 1
+                ? `/${profile.username}/${lines[0]!.slug}`
+                : `/${profile.username}`
+            }
             className={`${buttonClass} p-btn bg-p-accent text-p-accent-fg`}
           >
             Pesan ulang

@@ -2,6 +2,9 @@ import {
   ArrowRight01Icon,
   ArrowUpRight01Icon,
   Briefcase01Icon,
+  DashboardSquare01Icon,
+  File01Icon,
+  PackageIcon,
   Call02Icon,
   Facebook01Icon,
   GithubIcon,
@@ -17,7 +20,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import type { ReactNode } from "react";
 
-import { PRODUCT_TYPE_LABELS } from "@/lib/domain";
+import { PRODUCT_TYPE_LABELS, type ProductType } from "@/lib/domain";
 import { formatRupiah } from "@/lib/format";
 import type { LinkIconKey } from "@/lib/link-icon";
 import type { PublicBlock, PublicProductCard } from "@/lib/public-types";
@@ -50,6 +53,14 @@ const LINK_ICONS: Record<LinkIconKey, IconSvgElement> = {
   web: Globe02Icon,
 };
 
+/** Placeholder art for a product without a cover. */
+export const PRODUCT_TYPE_ICONS: Record<ProductType, IconSvgElement> = {
+  digital: File01Icon,
+  template: DashboardSquare01Icon,
+  service: Briefcase01Icon,
+  other: PackageIcon,
+};
+
 /** A tall card (image on top). */
 const card = "p-card p-press";
 /** A one-line card: icon or thumbnail, text, arrow. */
@@ -68,9 +79,8 @@ function TrailingArrow({ internal }: { internal: boolean }): ReactNode {
 
 export function HeadingBlock({ title }: { title: string }): ReactNode {
   return (
-    <h2 className="flex items-center gap-3 px-1 pt-5 text-[12.5px] font-semibold tracking-[0.08em] text-p-muted uppercase first:pt-1">
-      <span className="shrink-0">{title}</span>
-      <span aria-hidden className="h-px flex-1 bg-p-line" />
+    <h2 className="px-1 pt-5 text-[15px] font-semibold tracking-tight first:pt-1">
+      {title}
     </h2>
   );
 }
@@ -101,7 +111,7 @@ function FeaturedLink({
       <span className="flex items-center gap-3 p-4">
         <span className="min-w-0 flex-1">
           {block.category ? (
-            <span className="mb-1 block text-[12.5px] font-semibold text-p-accent-ink">
+            <span className="mb-1 block text-[12.5px] font-medium text-p-muted">
               {block.category}
             </span>
           ) : null}
@@ -156,7 +166,7 @@ export function LinkBlock({ block }: { block: LinkData }): ReactNode {
       ) : (
         <span
           aria-hidden
-          className="grid size-12 shrink-0 place-items-center rounded-[var(--p-r-media)] bg-p-accent-soft text-p-accent-ink"
+          className="grid size-12 shrink-0 place-items-center rounded-[var(--p-r-media)] bg-p-quiet text-p-fg"
         >
           <Icon icon={LINK_ICONS[block.icon]} className="size-[22px]" />
         </span>
@@ -211,9 +221,9 @@ function ProductCover({
   ) : (
     <span
       aria-hidden
-      className={`grid place-items-center bg-p-accent-soft text-3xl font-bold text-p-accent-ink ${className}`}
+      className={`grid place-items-center bg-p-quiet text-p-muted ${className}`}
     >
-      {product.name.slice(0, 1).toUpperCase()}
+      <Icon icon={PRODUCT_TYPE_ICONS[product.productType]} className="size-8" />
     </span>
   );
 }

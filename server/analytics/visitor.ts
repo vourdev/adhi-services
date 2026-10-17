@@ -5,7 +5,10 @@ import type { NextRequest, NextResponse } from "next/server";
 
 import { getDb } from "@/db/client";
 import { isBot } from "@/lib/analytics/classify";
-import { VISITOR_COOKIE, VISITOR_MAX_AGE } from "@/lib/analytics/visitor-cookie";
+import {
+  VISITOR_COOKIE,
+  VISITOR_MAX_AGE,
+} from "@/lib/analytics/visitor-cookie";
 import { TRAFFIC_SOURCES, type TrafficSource } from "@/lib/domain";
 import { isProduction } from "@/lib/env";
 

@@ -23,7 +23,8 @@ export async function trackedRedirect(
   response.headers.set("Cache-Control", "no-store");
   response.headers.set("X-Robots-Tag", "noindex, nofollow");
 
-  if (request.method !== "GET" || (await skipReason(request, event.profileId))) return response;
+  if (request.method !== "GET" || (await skipReason(request, event.profileId)))
+    return response;
 
   const visitor = readVisitor(request);
   try {

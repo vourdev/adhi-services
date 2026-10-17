@@ -143,19 +143,19 @@ export default async function FaqPage(): Promise<ReactNode> {
 
   return (
     <LegalPage title="Pertanyaan Umum (FAQ)" current="/faq">
-      <div className="flex flex-col divide-y border-y">
+      <div className="flex flex-col divide-y divide-p-line border-y border-p-line">
         {items.map((item) => (
           <details key={item.q} className="group py-4">
-            <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-medium text-foreground [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-medium text-p-fg [&::-webkit-details-marker]:hidden">
               <span>{item.q}</span>
               <span
                 aria-hidden
-                className="mt-0.5 text-muted-foreground transition-transform group-open:rotate-45"
+                className="mt-0.5 text-p-muted transition-transform group-open:rotate-45"
               >
                 +
               </span>
             </summary>
-            <div className="mt-3 text-foreground/80">{item.a}</div>
+            <div className="mt-3 text-p-fg/80">{item.a}</div>
           </details>
         ))}
       </div>

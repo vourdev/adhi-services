@@ -596,8 +596,15 @@ export const changePasswordSchema = z
     message: "Konfirmasi password tidak sama.",
   });
 
+/** Products in one order: a single "Beli sekarang" or the whole cart. */
+export const MAX_CART_ITEMS = 20;
+
 export const checkoutInputSchema = z.object({
-  productId: z.uuid(),
+  productIds: z
+    .array(z.uuid())
+    .min(1, "Keranjang kosong.")
+    .max(MAX_CART_ITEMS, `Maksimal ${MAX_CART_ITEMS} produk per pesanan.`)
+    .refine((ids) => new Set(ids).size === ids.length, "Produk ganda."),
   idempotencyKey: z.uuid(),
   /** The total the buyer saw; checkout stops if it changed since (price edited, code ended). */
   expectedAmount: z.coerce.number().int().min(0),

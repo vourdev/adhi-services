@@ -11,7 +11,13 @@ import {
 } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
-import { analyticsEvents, orders, products, profileLinks } from "@/db/schema";
+import {
+  analyticsEvents,
+  orderItems,
+  orders,
+  products,
+  profileLinks,
+} from "@/db/schema";
 import { percentChange, rate } from "@/lib/analytics/metrics";
 import {
   type DateRange,
@@ -492,7 +498,7 @@ export async function getProductAnalytics(
     lt(orders.paidAt, new Date(range.endMs))
   );
 
-  const [counts, perProductEvents, perProductOrders, catalog] =
+  const [counts, perProductEvents, perProductOrders, catalog, [paidTotals]] =
     await Promise.all([
       db
         .select({
@@ -516,15 +522,17 @@ export async function getProductAnalytics(
           )
         )
         .groupBy(analyticsEvents.productId, analyticsEvents.eventType),
+      // Per product from the order lines: an order of several products counts for each.
       db
         .select({
-          productId: orders.productId,
-          paidOrders: sql<number>`count(*)`,
-          revenue: sql<number>`sum(${orders.amount})`,
+          productId: orderItems.productId,
+          paidOrders: sql<number>`count(distinct ${orders.id})`,
+          revenue: sql<number>`sum(${orderItems.unitAmount})`,
         })
-        .from(orders)
+        .from(orderItems)
+        .innerJoin(orders, eq(orders.id, orderItems.orderId))
         .where(paidWhere)
-        .groupBy(orders.productId),
+        .groupBy(orderItems.productId),
       db
         .select({
           id: products.id,
@@ -533,18 +541,19 @@ export async function getProductAnalytics(
         })
         .from(products)
         .where(eq(products.profileId, profileId)),
+      db
+        .select({
+          paidOrders: sql<number>`count(*)`,
+          revenue: sql<number>`coalesce(sum(${orders.amount}), 0)`,
+        })
+        .from(orders)
+        .where(paidWhere),
     ]);
 
   const totalOf = (type: EventType) =>
     num(counts.find((row) => row.type === type)?.total);
-  const paidOrders = perProductOrders.reduce(
-    (sum, row) => sum + num(row.paidOrders),
-    0
-  );
-  const revenue = perProductOrders.reduce(
-    (sum, row) => sum + num(row.revenue),
-    0
-  );
+  const paidOrders = num(paidTotals?.paidOrders);
+  const revenue = num(paidTotals?.revenue);
   const productViews = totalOf("product_view");
   const productClicks = totalOf("product_click");
 

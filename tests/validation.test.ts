@@ -370,7 +370,7 @@ describe("discount code rules", () => {
 
   test("checkout reads the applied code case-insensitively, empty means none", () => {
     const input = {
-      productId: crypto.randomUUID(),
+      productIds: [crypto.randomUUID()],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: "70200",
       buyerName: "Sari",
@@ -391,5 +391,24 @@ describe("discount code rules", () => {
       null
     );
     assert.equal(checkoutInputSchema.parse(input).discountCode, null);
+  });
+
+  test("an order holds 1 to 20 different products", () => {
+    const base = {
+      idempotencyKey: crypto.randomUUID(),
+      expectedAmount: "1000",
+      buyerName: "Sari",
+      buyerEmail: "sari@example.id",
+    };
+    const id = crypto.randomUUID();
+    const parse = (productIds: string[]) =>
+      checkoutInputSchema.safeParse({ ...base, productIds }).success;
+    assert.equal(parse([]), false);
+    assert.equal(parse([id, id]), false);
+    assert.equal(
+      parse(Array.from({ length: 21 }, () => crypto.randomUUID())),
+      false
+    );
+    assert.equal(parse([id, crypto.randomUUID()]), true);
   });
 });

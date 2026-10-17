@@ -85,15 +85,21 @@ function textBody(lines: (string | null | false)[]): string {
 
 // --------------------------------------------------------------- buyer
 
+/** "A", "A dan B", or "A dan 2 produk lainnya", for subjects and sentences. */
+export function productSummary(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} dan ${names[1]}`;
+  return `${names[0]} dan ${names.length - 1} produk lainnya`;
+}
+
 export type ReceiptEmail = {
   sellerName: string;
   brandName: string;
   accent: string;
   buyerName: string;
   orderCode: string;
-  productName: string;
-  /** Price before the discount code. */
-  listAmount: number;
+  /** Each product with its price before the discount code. */
+  products: { name: string; listAmount: number }[];
   discountCode: string | null;
   discountAmount: number;
   total: number;
@@ -107,13 +113,17 @@ export type ReceiptEmail = {
 
 /** Sent once the payment is confirmed: the invoice and the way to the product. */
 export function receiptEmail(input: ReceiptEmail): EmailContent {
+  const productName = productSummary(input.products.map((p) => p.name));
   const rows: Row[] = [
     { label: "Nomor invoice", value: input.orderCode },
     { label: "Tanggal bayar", value: formatDateTime(input.paidAt) },
     ...(input.paymentMethod
       ? [{ label: "Metode", value: input.paymentMethod }]
       : []),
-    { label: input.productName, value: formatRupiah(input.listAmount) },
+    ...input.products.map((product) => ({
+      label: product.name,
+      value: formatRupiah(product.listAmount),
+    })),
     ...(input.discountCode
       ? [
           {
@@ -127,7 +137,7 @@ export function receiptEmail(input: ReceiptEmail): EmailContent {
   const next = input.hasDelivery
     ? "Produk Anda siap. Buka lewat tombol di bawah; halaman pesanan menyimpan link unduhannya."
     : "Penjual akan menghubungi Anda untuk langkah berikutnya.";
-  const subject = `Pembayaran berhasil: ${input.productName}`;
+  const subject = `Pembayaran berhasil: ${productName}`;
   return {
     subject,
     html: layout({
@@ -135,7 +145,7 @@ export function receiptEmail(input: ReceiptEmail): EmailContent {
       sender: input.sellerName,
       accent: input.accent,
       heading: "Pembayaran berhasil",
-      intro: `Terima kasih, ${escapeHtml(input.buyerName)}. Pembayaran untuk <strong>${escapeHtml(input.productName)}</strong> sudah diterima. ${escapeHtml(next)}`,
+      intro: `Terima kasih, ${escapeHtml(input.buyerName)}. Pembayaran untuk <strong>${escapeHtml(productName)}</strong> sudah diterima. ${escapeHtml(next)}`,
       button: {
         label: input.hasDelivery ? "Buka produk" : "Lihat pesanan",
         url: input.orderUrl,
@@ -148,7 +158,7 @@ export function receiptEmail(input: ReceiptEmail): EmailContent {
     text: textBody([
       `Pembayaran berhasil`,
       ``,
-      `Terima kasih, ${input.buyerName}. Pembayaran untuk ${input.productName} sudah diterima. ${next}`,
+      `Terima kasih, ${input.buyerName}. Pembayaran untuk ${productName} sudah diterima. ${next}`,
       ``,
       `${input.hasDelivery ? "Buka produk" : "Lihat pesanan"}: ${input.orderUrl}`,
       ``,
@@ -168,6 +178,7 @@ export type PaymentLinkEmail = {
   accent: string;
   buyerName: string;
   orderCode: string;
+  /** One product, or a summary from productSummary(). */
   productName: string;
   total: number;
   orderUrl: string;
@@ -212,6 +223,7 @@ export type SellerOrderEmail = {
   brandName: string;
   sellerName: string;
   orderCode: string;
+  /** One product, or a summary from productSummary(). */
   productName: string;
   total: number;
   buyerName: string;

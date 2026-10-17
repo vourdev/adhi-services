@@ -1,22 +1,17 @@
 import { and, eq, isNull } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
-import {
-  orderItems,
-  orders,
-  paymentTransactions,
-  products,
-  profiles,
-  users,
-} from "@/db/schema";
+import { orders, paymentTransactions, profiles, users } from "@/db/schema";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import { accentHex } from "@/lib/profile-look";
 
+import { loadOrderLines } from "../checkout";
 import { orderEmailKey } from "../order-access";
 import type { CancelEmail, EmailMessage, SendEmail } from "./resend";
 import {
   fromHeader,
   paymentLinkEmail,
+  productSummary,
   receiptEmail,
   sellerOrderEmail,
 } from "./templates";
@@ -84,27 +79,29 @@ async function loadOrder(db: Database, orderId: string) {
   const [row] = await db
     .select({
       order: orders,
-      productName: products.name,
-      deliveryType: products.deliveryType,
       sellerName: profiles.displayName,
       accent: profiles.accent,
       ownerEmail: users.email,
-      listAmount: orderItems.listAmount,
       paymentType: paymentTransactions.paymentType,
     })
     .from(orders)
-    .innerJoin(products, eq(products.id, orders.productId))
     .innerJoin(profiles, eq(profiles.id, orders.profileId))
     .innerJoin(users, eq(users.id, profiles.ownerId))
-    .leftJoin(orderItems, eq(orderItems.orderId, orders.id))
     .leftJoin(paymentTransactions, eq(paymentTransactions.orderId, orders.id))
     .where(eq(orders.id, orderId))
     .limit(1);
   if (!row) return null;
-  const settings = await db.query.platformSettings.findFirst({
-    columns: { brandName: true },
-  });
-  return { ...row, brandName: settings?.brandName ?? "Adhi Web Services" };
+  const [lines, settings] = await Promise.all([
+    loadOrderLines(db, orderId),
+    db.query.platformSettings.findFirst({ columns: { brandName: true } }),
+  ]);
+  return {
+    ...row,
+    lines,
+    productName: productSummary(lines.map((line) => line.name)),
+    hasDelivery: lines.some((line) => line.deliveryType !== "none"),
+    brandName: settings?.brandName ?? "Adhi Web Services",
+  };
 }
 
 function orderLinks(
@@ -214,7 +211,7 @@ export async function deliverOrderEmails(
   const reminder = await cancelPaymentLink(db, order, deps, nowMs);
   const paidAt = order.paidAt ?? new Date(nowMs);
   const paymentMethod = paymentMethodLabel(loaded.paymentType);
-  const hasDelivery = loaded.deliveryType !== "none";
+  const { hasDelivery } = loaded;
   const links = orderLinks(deps, order);
 
   const receipt =
@@ -230,9 +227,10 @@ export async function deliverOrderEmails(
               accent: accentHex(loaded.accent),
               buyerName: order.buyerName,
               orderCode: order.code,
-              productName: loaded.productName,
-              listAmount:
-                loaded.listAmount ?? order.amount + order.discountAmount,
+              products: loaded.lines.map((line) => ({
+                name: line.name,
+                listAmount: line.listAmount,
+              })),
               discountCode: order.discountCode,
               discountAmount: order.discountAmount,
               total: order.amount,

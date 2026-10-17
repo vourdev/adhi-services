@@ -10,7 +10,16 @@ import { Icon } from "./icon";
  * share sheet is not available. Shares the clean URL, without the UTM
  * parameters the visitor arrived with.
  */
-export function ShareButton({ title }: { title: string }): ReactNode {
+export function ShareButton({
+  title,
+  compact = false,
+  className,
+}: {
+  title: string;
+  /** Icon only (the label is still read out). */
+  compact?: boolean;
+  className?: string;
+}): ReactNode {
   const [copied, setCopied] = useState(false);
 
   async function share() {
@@ -36,10 +45,15 @@ export function ShareButton({ title }: { title: string }): ReactNode {
     <button
       type="button"
       onClick={share}
-      className="p-tile p-press flex h-10 items-center gap-2 rounded-[var(--p-r-btn)] px-4 text-[14px] font-semibold text-p-fg"
+      className={
+        className ??
+        "p-tile p-press flex h-10 items-center gap-2 rounded-[var(--p-r-btn)] px-4 text-[14px] font-semibold text-p-fg"
+      }
     >
       <Icon icon={copied ? Tick02Icon : Share08Icon} className="size-4.5" />
-      <span aria-live="polite">{copied ? "Link disalin" : "Bagikan"}</span>
+      <span aria-live="polite" className={compact ? "sr-only" : undefined}>
+        {copied ? "Link disalin" : "Bagikan"}
+      </span>
     </button>
   );
 }

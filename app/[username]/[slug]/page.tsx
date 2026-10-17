@@ -1,11 +1,9 @@
 import {
   ArrowLeft01Icon,
-  ArrowRight01Icon,
   Chatting01Icon,
   CreditCardIcon,
   Download04Icon,
   Mail01Icon,
-  StarIcon,
   WhatsappIcon,
 } from "@hugeicons/core-free-icons";
 import type { Metadata } from "next";
@@ -13,7 +11,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { PriceTag } from "@/components/profile/blocks";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { CartLink } from "@/components/cart/cart-link";
+import { PRODUCT_TYPE_ICONS, PriceTag } from "@/components/profile/blocks";
 import { BottomBar, ctaClass } from "@/components/profile/bottom-bar";
 import { Icon, type IconSvgElement } from "@/components/profile/icon";
 import { MediaImage } from "@/components/profile/media-image";
@@ -27,9 +27,10 @@ import { WhatsAppOrder } from "@/components/profile/whatsapp-order";
 import { getDb } from "@/db/client";
 import { PRODUCT_TYPE_LABELS } from "@/lib/domain";
 import { lookFromProfile } from "@/lib/profile-look";
+import { cartProducts, readCart } from "@/server/cart";
 import { hasUsableCodes } from "@/server/discount-codes";
-import { loadProduct } from "@/server/public-data";
 import { getPlatformSettings } from "@/server/platform-settings";
+import { loadProduct } from "@/server/public-data";
 
 type Props = { params: Promise<{ username: string; slug: string }> };
 
@@ -69,50 +70,45 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-type InfoRow = { icon: IconSvgElement; title: string; text: string };
+type Fact = { icon: IconSvgElement; text: string };
 
 /** What the buyer can expect, from the product's own settings only. */
-function infoRows(
+function facts(
   checkoutMethod: "whatsapp" | "direct",
   hasDelivery: boolean
-): InfoRow[] {
+): Fact[] {
   if (checkoutMethod === "whatsapp")
     return [
       {
         icon: WhatsappIcon,
-        title: "Pesan lewat WhatsApp",
-        text: "Chat dengan penjual terbuka berisi pesan yang sudah disiapkan.",
+        text: "Dipesan lewat WhatsApp; chat terbuka dengan pesan yang sudah disiapkan.",
       },
       {
         icon: Chatting01Icon,
-        title: "Detail dibahas di chat",
         text: "Pembayaran dan pengiriman disepakati langsung dengan penjual.",
       },
     ];
   return [
     {
       icon: CreditCardIcon,
-      title: "QRIS, virtual account, e-wallet, atau kartu",
-      text: "Dibayar di halaman pembayaran yang aman.",
+      text: "Bayar dengan QRIS, virtual account, e-wallet, atau kartu.",
     },
     hasDelivery
       ? {
           icon: Download04Icon,
-          title: "Akses langsung setelah bayar",
-          text: "Link atau file produk muncul di halaman pesanan begitu pembayaran terverifikasi.",
+          text: "Link produk muncul di halaman pesanan begitu pembayaran terverifikasi.",
         }
       : {
           icon: Chatting01Icon,
-          title: "Penjual menghubungi Anda",
-          text: "Langkah berikutnya dibahas setelah pembayaran diterima.",
+          text: "Penjual menghubungi Anda setelah pembayaran diterima.",
         },
-    {
-      icon: Mail01Icon,
-      title: "Bukti pembayaran lewat email",
-      text: "Status pesanan juga bisa dicek kapan saja di halaman pesanan.",
-    },
+    { icon: Mail01Icon, text: "Bukti pembayaran dikirim ke email Anda." },
   ];
 }
+
+/** Round icon buttons laid over the product image on phones. */
+const overlayButton =
+  "grid size-10 place-items-center rounded-full bg-p-card/85 text-p-fg backdrop-blur-md";
 
 export default async function ProductPage({
   params,
@@ -121,47 +117,56 @@ export default async function ProductPage({
   const loaded = await loadProduct(username, slug);
   if (!loaded) notFound();
   const { product, profile, isOwner, whatsappReady, paymentsReady } = loaded;
-  const platform = await getPlatformSettings(getDb());
+  const [platform, cart] = await Promise.all([
+    getPlatformSettings(getDb()),
+    readCart().then((ids) => cartProducts(profile.id, ids)),
+  ]);
   const sellerPath = `/${profile.username}`;
+  const published = product.status === "published";
   const whatsappOrder =
-    product.checkoutMethod === "whatsapp" &&
-    whatsappReady &&
-    product.status === "published";
-  const orderable =
-    product.checkoutMethod === "whatsapp" ? whatsappOrder : paymentsReady;
+    product.checkoutMethod === "whatsapp" && whatsappReady && published;
+  const directOrder =
+    product.checkoutMethod === "direct" && paymentsReady && published;
+  const inCart = cart.some((item) => item.id === product.id);
 
-  // WhatsApp ordering renders its own buttons (they carry the discount code).
   const closed = (
-    <p className="p-card rounded-[var(--p-r-btn)] px-4 py-3.5 text-center text-sm text-p-muted">
-      {product.checkoutMethod === "whatsapp"
-        ? "Pemesanan belum dibuka."
-        : "Pembayaran online belum tersedia."}
+    <p className="rounded-[var(--p-r-btn)] border border-p-line px-4 py-3.5 text-center text-sm text-p-muted">
+      {!published
+        ? "Produk ini masih draf."
+        : product.checkoutMethod === "whatsapp"
+          ? "Pemesanan belum dibuka."
+          : "Pembayaran online belum tersedia."}
     </p>
   );
-  const buyButton =
-    product.checkoutMethod === "direct" && paymentsReady ? (
+  const buyButtons = directOrder ? (
+    <div className="flex gap-3">
+      <AddToCartButton
+        productId={product.id}
+        inCart={inCart}
+        className="h-13 w-14 rounded-[var(--p-r-btn)] border border-p-fg/80 text-p-fg"
+      />
       <Link
-        href={`/${profile.username}/${product.slug}/checkout`}
+        href={`${sellerPath}/checkout?beli=${product.id}`}
         prefetch={false}
         className={ctaClass}
       >
-        {product.ctaLabel ?? "Beli Sekarang"}
-        <Icon icon={ArrowRight01Icon} className="size-5" strokeWidth={2} />
+        {product.ctaLabel ?? "Beli sekarang"}
       </Link>
-    ) : null;
+    </div>
+  ) : null;
 
   return (
     <ProfileSurface look={lookFromProfile(profile)}>
-      {product.status !== "published" ? (
+      {!published ? (
         <div className="bg-p-fg px-4 py-2 text-center text-xs text-p-bg">
           Pratinjau draf. Hanya Anda yang bisa melihat halaman ini.
         </div>
       ) : null}
-      <div className="mx-auto w-full max-w-[34rem] px-4 pt-3 pb-32 lg:max-w-5xl lg:px-8 lg:pt-8 lg:pb-12">
-        <nav className="flex items-center justify-between gap-3">
+      <div className="mx-auto w-full max-w-[34rem] pb-32 lg:max-w-5xl lg:px-8 lg:pt-8 lg:pb-12">
+        <nav className="hidden items-center justify-between gap-3 lg:flex">
           <Link
             href={sellerPath}
-            className="flex min-w-0 items-center gap-2.5 rounded-full py-1.5 pr-3 text-[14px] font-semibold hover:text-p-accent-ink"
+            className="flex min-w-0 items-center gap-2.5 py-1.5 pr-3 text-[14px] font-semibold"
           >
             <Icon
               icon={ArrowLeft01Icon}
@@ -170,14 +175,17 @@ export default async function ProductPage({
             <SellerAvatar name={profile.displayName} src={profile.avatarUrl} />
             <span className="truncate">{profile.displayName}</span>
           </Link>
-          <ShareButton title={product.name} />
+          <div className="flex items-center gap-1">
+            <ShareButton title={product.name} />
+            <CartLink username={profile.username} count={cart.length} />
+          </div>
         </nav>
 
         <main
           id="konten"
-          className="mt-3 lg:mt-6 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-start lg:gap-12"
+          className="lg:mt-6 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-12"
         >
-          <div className="p-card overflow-hidden lg:sticky lg:top-8">
+          <div className="relative lg:sticky lg:top-8">
             {product.coverUrl ? (
               <MediaImage
                 src={product.coverUrl}
@@ -185,36 +193,55 @@ export default async function ProductPage({
                 width={960}
                 height={960}
                 priority
-                className="aspect-square w-full bg-p-line object-cover"
+                className="aspect-square w-full bg-p-quiet object-cover lg:rounded-[var(--p-r-card)]"
               />
             ) : (
               <span
                 aria-hidden
-                className="grid aspect-square w-full place-items-center bg-p-accent-soft text-7xl font-bold text-p-accent-ink"
+                className="grid aspect-square w-full place-items-center bg-p-quiet text-p-muted lg:rounded-[var(--p-r-card)]"
               >
-                {product.name.slice(0, 1).toUpperCase()}
+                <Icon
+                  icon={PRODUCT_TYPE_ICONS[product.productType]}
+                  className="size-16"
+                  strokeWidth={1.25}
+                />
               </span>
             )}
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3 lg:hidden">
+              <Link
+                href={sellerPath}
+                aria-label={`Kembali ke ${profile.displayName}`}
+                className={overlayButton}
+              >
+                <Icon icon={ArrowLeft01Icon} className="size-5" />
+              </Link>
+              <div className="flex items-center gap-2">
+                <ShareButton
+                  title={product.name}
+                  compact
+                  className={overlayButton}
+                />
+                <CartLink
+                  username={profile.username}
+                  count={cart.length}
+                  className={overlayButton}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6 flex flex-col gap-6 lg:mt-0">
-            <header className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-[var(--p-r-btn)] bg-p-fg/[0.06] px-2.5 py-1 text-[12.5px] font-semibold text-p-fg/75">
-                  {PRODUCT_TYPE_LABELS[product.productType]}
-                </span>
-                {product.isFeatured ? (
-                  <span className="flex items-center gap-1 rounded-[var(--p-r-btn)] bg-p-accent-soft px-2.5 py-1 text-[12.5px] font-semibold text-p-accent-ink">
-                    <Icon
-                      icon={StarIcon}
-                      className="size-3.5"
-                      strokeWidth={2}
-                    />
-                    Unggulan
-                  </span>
-                ) : null}
-              </div>
-              <h1 className="text-[1.75rem] leading-[1.15] font-bold tracking-tight text-balance lg:text-[2.25rem]">
+          <div className="mt-5 flex flex-col gap-6 px-4 lg:mt-0 lg:px-0">
+            <header className="flex flex-col gap-2">
+              <span className="text-[13px] font-medium text-p-muted">
+                {PRODUCT_TYPE_LABELS[product.productType]} oleh{" "}
+                <Link
+                  href={sellerPath}
+                  className="text-p-fg underline-offset-4 hover:underline"
+                >
+                  {profile.displayName}
+                </Link>
+              </span>
+              <h1 className="text-[1.625rem] leading-[1.2] font-bold tracking-tight text-balance lg:text-[2.125rem]">
                 {product.name}
               </h1>
               <PriceTag amount={product.priceAmount} size="lg" />
@@ -225,35 +252,27 @@ export default async function ProductPage({
                 productId={product.id}
                 price={product.priceAmount}
                 label={product.ctaLabel ?? "Pesan via WhatsApp"}
-                discountEnabled={await hasUsableCodes(
-                  getDb(),
-                  profile.id,
-                  product.id
-                )}
+                discountEnabled={await hasUsableCodes(getDb(), profile.id, [
+                  product.id,
+                ])}
               />
             ) : (
-              <div className="hidden lg:block">{buyButton ?? closed}</div>
+              <div className="hidden lg:block">{buyButtons ?? closed}</div>
             )}
 
-            {orderable ? (
-              <ul className="p-card flex flex-col divide-y divide-p-line">
-                {infoRows(product.checkoutMethod, product.hasDelivery).map(
-                  (row) => (
-                    <li key={row.title} className="flex gap-3.5 p-4">
-                      <span
-                        aria-hidden
-                        className="grid size-10 shrink-0 place-items-center rounded-[var(--p-r-media)] bg-p-accent-soft text-p-accent-ink"
-                      >
-                        <Icon icon={row.icon} className="size-5" />
-                      </span>
-                      <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-[14.5px] leading-snug font-semibold">
-                          {row.title}
-                        </span>
-                        <span className="text-[13.5px] leading-snug text-p-muted">
-                          {row.text}
-                        </span>
-                      </span>
+            {whatsappOrder || directOrder ? (
+              <ul className="flex flex-col gap-2.5 border-y border-p-line py-4">
+                {facts(product.checkoutMethod, product.hasDelivery).map(
+                  (fact) => (
+                    <li
+                      key={fact.text}
+                      className="flex gap-3 text-[14px] leading-snug text-p-fg/80"
+                    >
+                      <Icon
+                        icon={fact.icon}
+                        className="mt-px size-[18px] shrink-0 text-p-muted"
+                      />
+                      {fact.text}
                     </li>
                   )
                 )}
@@ -261,36 +280,31 @@ export default async function ProductPage({
             ) : null}
 
             {product.description ? (
-              <section aria-labelledby="tentang-produk">
+              <section aria-labelledby="deskripsi">
                 <h2
-                  id="tentang-produk"
-                  className="mb-3 text-[13px] font-semibold tracking-[0.06em] text-p-muted uppercase"
+                  id="deskripsi"
+                  className="mb-2 text-[15px] font-semibold tracking-tight"
                 >
-                  Tentang produk
+                  Deskripsi
                 </h2>
                 <ProductDescription text={product.description} />
               </section>
             ) : null}
-
           </div>
         </main>
 
-        <ProfileFooter
-          name={profile.displayName}
-          brandName={platform.brandName}
-          hideWatermark={profile.hideWatermark}
-        />
+        <div className="px-4 lg:px-0">
+          <ProfileFooter
+            name={profile.displayName}
+            brandName={platform.brandName}
+            hideWatermark={profile.hideWatermark}
+          />
+        </div>
       </div>
 
-      {whatsappOrder ? null : buyButton ? (
-        <BottomBar price={<PriceTag amount={product.priceAmount} />}>
-          {buyButton}
-        </BottomBar>
-      ) : (
-        <BottomBar>{closed}</BottomBar>
-      )}
+      {whatsappOrder ? null : <BottomBar>{buyButtons ?? closed}</BottomBar>}
 
-      {product.status === "published" && !isOwner ? (
+      {published && !isOwner ? (
         <ViewBeacon
           type="product_view"
           profileId={profile.id}

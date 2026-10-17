@@ -86,7 +86,7 @@ async function newOrder(buyerName = "Budi <b>") {
     db,
     gateway,
     {
-      productId,
+      productIds: [productId],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: 50000,
       discountCode: null,
@@ -171,7 +171,7 @@ describe("templates", () => {
   const all = [
     receiptEmail({
       ...base,
-      listAmount: 50000,
+      products: [{ name: base.productName, listAmount: 50000 }],
       discountCode: "HEMAT",
       discountAmount: 5000,
       paidAt: new Date(Date.UTC(2026, 9, 13, 9)),

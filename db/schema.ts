@@ -385,22 +385,33 @@ export const webhookEvents = sqliteTable(
   (t) => [uniqueIndex("webhook_events_key_idx").on(t.provider, t.eventKey)]
 );
 
-/** Download access granted to a paid order. Resolves the product's current file or link at access time. */
-export const digitalDeliveries = sqliteTable("digital_deliveries", {
-  id: id(),
-  orderId: text("order_id")
-    .notNull()
-    .unique()
-    .references(() => orders.id, { onDelete: "cascade" }),
-  productId: text("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "restrict" }),
-  downloadCount: integer("download_count").notNull().default(0),
-  maxDownloads: integer("max_downloads").notNull().default(10),
-  revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
-  lastAccessedAt: integer("last_accessed_at", { mode: "timestamp_ms" }),
-  createdAt: createdAt(),
-});
+/**
+ * Download access granted to a paid order, one per product that has a file
+ * or link. Resolves the product's current file or link at access time.
+ */
+export const digitalDeliveries = sqliteTable(
+  "digital_deliveries",
+  {
+    id: id(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    downloadCount: integer("download_count").notNull().default(0),
+    maxDownloads: integer("max_downloads").notNull().default(10),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    lastAccessedAt: integer("last_accessed_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("digital_deliveries_order_product_idx").on(
+      t.orderId,
+      t.productId
+    ),
+  ]
+);
 
 // --------------------------------------------------------------- analytics
 

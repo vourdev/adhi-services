@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, like, or, type SQL } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
-import { orders, products, profileLinks, type Product } from "@/db/schema";
+import { orderItems, products, profileLinks, type Product } from "@/db/schema";
 import type { CheckoutMethod, ProductStatus } from "@/lib/domain";
 import { fail, isUniqueViolation, ok, type Result } from "@/lib/result";
 import type { ProductInput } from "@/lib/validation";
@@ -154,8 +154,8 @@ export async function deleteProduct(
   if (!existing) return fail("Produk tidak ditemukan.");
   const [orderCount] = await db
     .select({ value: count() })
-    .from(orders)
-    .where(eq(orders.productId, id));
+    .from(orderItems)
+    .where(eq(orderItems.productId, id));
   if ((orderCount?.value ?? 0) > 0) {
     return fail(
       "Produk ini sudah punya pesanan, jadi tidak bisa dihapus. Ubah statusnya ke draf agar tidak tampil."

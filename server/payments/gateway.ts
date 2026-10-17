@@ -8,7 +8,8 @@ import type { OrderStatus } from "@/lib/domain";
 export type CreateTransactionInput = {
   orderCode: string;
   amount: number;
-  item: { id: string; name: string };
+  /** One line per product; the prices add up to `amount`. */
+  items: { id: string; name: string; price: number }[];
   buyer: { name: string; email: string; phone: string | null };
   /** Where the buyer lands after paying; the dashboard's Finish URL is only a fallback. */
   finishUrl: string;

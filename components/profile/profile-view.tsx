@@ -4,6 +4,8 @@ import { SOCIAL_LABELS } from "@/lib/domain";
 import { type ProfileLook, surfaceAttributes } from "@/lib/profile-look";
 import type { PublicBlock, PublicProfile } from "@/lib/public-types";
 
+import { CartLink } from "@/components/cart/cart-link";
+
 import { BioText } from "./bio-text";
 import { HeadingBlock, LinkBlock, ProductBlock, ProductTile } from "./blocks";
 import { Icon } from "./icon";
@@ -40,10 +42,13 @@ function groupBlocks(blocks: PublicBlock[]): Group[] {
 export function ProfileView({
   profile,
   footer,
+  cartCount = 0,
   preview = false,
 }: {
   profile: PublicProfile;
   footer?: ReactNode;
+  /** Products in the visitor's cart; the cart icon shows once there is one. */
+  cartCount?: number;
   /** Dashboard preview: no landmark elements, no share button. */
   preview?: boolean;
 }): ReactNode {
@@ -84,12 +89,23 @@ export function ProfileView({
             ) : (
               <span
                 aria-hidden
-                className="p-avatar relative grid size-26 shrink-0 place-items-center rounded-full bg-p-accent text-4xl font-bold text-p-accent-fg @xl:size-28"
+                className="p-avatar relative grid size-26 shrink-0 place-items-center rounded-full bg-p-fg text-4xl font-bold text-p-bg @xl:size-28"
               >
                 {profile.displayName.slice(0, 1).toUpperCase()}
               </span>
             )}
-            {preview ? null : <ShareButton title={profile.displayName} />}
+            {preview ? null : (
+              <div className="flex items-center gap-2">
+                {cartCount > 0 ? (
+                  <CartLink
+                    username={profile.username}
+                    count={cartCount}
+                    className="p-tile p-press rounded-[var(--p-r-btn)] text-p-fg"
+                  />
+                ) : null}
+                <ShareButton title={profile.displayName} />
+              </div>
+            )}
           </div>
 
           <Name className="p-name mt-3 text-[1.625rem] leading-tight font-bold tracking-tight text-balance">

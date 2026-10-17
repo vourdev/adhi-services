@@ -1,15 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { ProfileSurface } from "@/components/profile/profile-view";
+import { getDb } from "@/db/client";
 import type { PlatformSettings } from "@/db/schema";
-
-export const LEGAL_LINKS = [
-  { href: "/syarat-ketentuan", label: "Syarat & Ketentuan" },
-  { href: "/kebijakan-refund", label: "Kebijakan Refund" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/kontak", label: "Kontak" },
-  { href: "/privasi", label: "Privasi" },
-] as const;
+import { LEGAL_LINKS } from "@/lib/legal-links";
+import { lookFromProfile } from "@/lib/profile-look";
+import { getPrimaryProfile } from "@/server/profile";
 
 /** The business behind the platform, as the owner entered it in Settings. Empty fields are null. */
 export type BusinessContact = {
@@ -33,8 +30,11 @@ export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
-/** Same plain reading layout as the privacy page, with links to the other policies. */
-export function LegalPage({
+/**
+ * A plain reading page for the policies, in the owner's profile look so it
+ * matches the profile and checkout, with links to the other policies.
+ */
+export async function LegalPage({
   title,
   updated,
   current,
@@ -45,39 +45,41 @@ export function LegalPage({
   updated?: string;
   current: (typeof LEGAL_LINKS)[number]["href"];
   children: ReactNode;
-}): ReactNode {
-  return (
+}): Promise<ReactNode> {
+  const profile = await getPrimaryProfile(getDb());
+  const body = (
     <main className="mx-auto max-w-2xl px-5 py-12 text-[15px] leading-relaxed">
       <Link
         href="/"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        className="text-sm text-p-muted underline-offset-4 hover:underline"
       >
         ← Kembali
       </Link>
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">{title}</h1>
       {updated ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Berlaku sejak {updated}
-        </p>
+        <p className="mt-2 text-sm text-p-muted">Berlaku sejak {updated}</p>
       ) : null}
-      <div className="mt-6 flex flex-col gap-6 text-foreground/90">
-        {children}
-      </div>
+      <div className="mt-6 flex flex-col gap-6 text-p-fg/90">{children}</div>
       <nav
         aria-label="Kebijakan lainnya"
-        className="mt-12 flex flex-wrap gap-x-4 gap-y-2 border-t pt-6 text-sm text-muted-foreground"
+        className="mt-12 flex flex-wrap gap-x-4 gap-y-2 border-t border-p-line pt-6 text-sm text-p-muted"
       >
         {LEGAL_LINKS.filter((link) => link.href !== current).map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className="underline-offset-4 hover:text-foreground hover:underline"
+            className="underline-offset-4 hover:text-p-fg hover:underline"
           >
             {link.label}
           </Link>
         ))}
       </nav>
     </main>
+  );
+  return profile ? (
+    <ProfileSurface look={lookFromProfile(profile)}>{body}</ProfileSurface>
+  ) : (
+    body
   );
 }
 
@@ -90,7 +92,7 @@ export function LegalSection({
 }): ReactNode {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <h2 className="text-lg font-semibold text-p-fg">{title}</h2>
       {children}
     </section>
   );
@@ -120,7 +122,10 @@ export function ContactInline({
       ) : null}
       {contact.email && contact.phone ? " atau " : null}
       {contact.phone ? (
-        <a href={telHref(contact.phone)} className="underline underline-offset-2">
+        <a
+          href={telHref(contact.phone)}
+          className="underline underline-offset-2"
+        >
           {contact.phone}
         </a>
       ) : null}

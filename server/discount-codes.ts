@@ -4,6 +4,7 @@ import {
   count,
   eq,
   gt,
+  inArray,
   isNotNull,
   isNull,
   lte,
@@ -20,9 +21,10 @@ import {
   type DiscountCode,
 } from "@/db/schema";
 import {
-  applyDiscount,
+  type CartLine,
+  type CartPrice,
   parseLocalWib,
-  type PriceBreakdown,
+  priceCart,
 } from "@/lib/pricing";
 import { fail, isUniqueViolation, ok, type Result } from "@/lib/result";
 import {
@@ -58,15 +60,15 @@ export const CODE_REJECTION_MESSAGES: Record<CodeRejection, string> = {
   not_started: "Kode diskon ini belum bisa dipakai.",
   ended: "Masa berlaku kode diskon ini sudah habis.",
   used_up: "Kuota kode diskon ini sudah habis.",
-  wrong_product: "Kode diskon ini tidak berlaku untuk produk ini.",
-  too_large: "Kode diskon ini tidak berlaku untuk produk ini.",
+  wrong_product: "Kode diskon ini tidak berlaku untuk produk yang dipilih.",
+  too_large: "Kode diskon ini tidak berlaku untuk produk yang dipilih.",
 };
 
 export type AppliedCode = {
   id: string;
   code: string;
   maxUses: number | null;
-  price: PriceBreakdown;
+  price: CartPrice;
 };
 
 export type CodeCheck =
@@ -106,8 +108,8 @@ export async function checkDiscountCode(
   db: Database | Transaction,
   input: {
     profileId: string;
-    productId: string;
-    priceAmount: number;
+    /** The products being bought together (one for a single product). */
+    items: CartLine[];
     code: string;
   },
   nowMs = Date.now()
@@ -125,12 +127,14 @@ export async function checkDiscountCode(
   if (row.startsAt && row.startsAt.getTime() > nowMs)
     return reject("not_started");
   if (row.endsAt && row.endsAt.getTime() <= nowMs) return reject("ended");
-  if (row.productId && row.productId !== input.productId)
-    return reject("wrong_product");
 
-  const price = applyDiscount(input.priceAmount, row);
-  // A code never makes a product free: Midtrans cannot charge Rp0.
-  if (price.discountAmount < 1 || price.finalPrice < 1)
+  const price = priceCart(input.items, row);
+  if (price.eligible === 0) return reject("wrong_product");
+  // A code never makes a product free: Midtrans cannot charge Rp0 for an item.
+  if (
+    price.discountAmount < 1 ||
+    price.lines.some((line) => line.finalPrice < 1)
+  )
     return reject("too_large");
 
   if (
@@ -149,9 +153,10 @@ export async function checkDiscountCode(
 export async function hasUsableCodes(
   db: Database,
   profileId: string,
-  productId: string,
+  productIds: string[],
   nowMs = Date.now()
 ): Promise<boolean> {
+  if (productIds.length === 0) return false;
   const now = new Date(nowMs);
   const row = await db
     .select({ id: discountCodes.id })
@@ -162,7 +167,7 @@ export async function hasUsableCodes(
         eq(discountCodes.isActive, true),
         or(
           isNull(discountCodes.productId),
-          eq(discountCodes.productId, productId)
+          inArray(discountCodes.productId, productIds)
         ),
         or(isNull(discountCodes.startsAt), lte(discountCodes.startsAt, now)),
         or(isNull(discountCodes.endsAt), gt(discountCodes.endsAt, now))

@@ -46,6 +46,78 @@ export function applyDiscount(
   };
 }
 
+export type CartLine = { productId: string; listPrice: number };
+
+/** A code as the cart sees it: limited to one product, or to every product (null). */
+export type CartCode = CodeDiscount & { productId: string | null };
+
+export type PricedLine = CartLine & {
+  /** Rupiah the code took off this product. */
+  discountAmount: number;
+  /** What is charged for this product. */
+  finalPrice: number;
+};
+
+export type CartPrice = {
+  lines: PricedLine[];
+  subtotal: number;
+  discountAmount: number;
+  total: number;
+  /** How many products the code applies to (0 without a code). */
+  eligible: number;
+};
+
+/**
+ * Prices several products paid together. A percentage code comes off each
+ * product it applies to. A fixed code comes off once, spread over those
+ * products in proportion to their price (the last one takes the rounding),
+ * so every product line still adds up to the total the gateway charges.
+ */
+export function priceCart(lines: CartLine[], code: CartCode | null): CartPrice {
+  const eligibleIndexes = code
+    ? lines.flatMap((line, index) =>
+        code.productId === null || code.productId === line.productId
+          ? [index]
+          : []
+      )
+    : [];
+  const discounts = lines.map(() => 0);
+  if (code && code.discountType === "percent") {
+    for (const index of eligibleIndexes)
+      discounts[index] = discountAmountFor(lines[index]!.listPrice, code);
+  } else if (code && eligibleIndexes.length > 0) {
+    const eligibleTotal = eligibleIndexes.reduce(
+      (sum, index) => sum + lines[index]!.listPrice,
+      0
+    );
+    const amount = Math.min(Math.max(code.discountValue, 0), eligibleTotal);
+    let left = amount;
+    eligibleIndexes.forEach((index, position) => {
+      const price = lines[index]!.listPrice;
+      const share =
+        position === eligibleIndexes.length - 1
+          ? Math.min(left, price)
+          : Math.floor((amount * price) / eligibleTotal);
+      discounts[index] = share;
+      left -= share;
+    });
+  }
+  const priced = lines.map((line, index) => ({
+    ...line,
+    discountAmount: discounts[index]!,
+    finalPrice: line.listPrice - discounts[index]!,
+  }));
+  const subtotal = lines.reduce((sum, line) => sum + line.listPrice, 0);
+  const discountAmount = discounts.reduce((sum, value) => sum + value, 0);
+  return {
+    lines: priced,
+    subtotal,
+    discountAmount,
+    total: subtotal - discountAmount,
+    eligible: eligibleIndexes.length,
+  };
+}
+
 /** "10%" or "Rp10.000". */
 export function describeDiscount(discount: CodeDiscount): string {
   return discount.discountType === "percent"

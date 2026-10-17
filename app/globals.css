@@ -69,6 +69,7 @@
   --color-p-accent-ink: var(--p-accent-ink);
   --color-p-price: var(--p-price);
   --color-p-sale: var(--p-sale);
+  --color-p-quiet: var(--p-quiet);
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
@@ -160,21 +161,26 @@
  * tokens and style the .p-* classes; components use nothing else.
  */
 
-/* Standard preset, light: light grey page, white cards. */
+/*
+ * Standard preset, light: neutral grey page, white cards, hairline edges.
+ * The accent is kept for the main action; prices and text use the ink.
+ */
 .profile-surface {
-  --p-bg: #f1f3f6;
+  --p-bg: #f4f4f4;
   --p-card: #ffffff;
-  --p-card-hover: #f7f8fa;
-  --p-line: #e3e6eb;
-  --p-fg: #111827;
-  --p-muted: #5b6474;
+  --p-card-hover: #fafafa;
+  --p-line: #e4e4e4;
+  --p-fg: #161616;
+  --p-muted: #616161;
   --p-accent: var(--accent-light);
   --p-accent-fg: var(--accent-fg-light);
   /* The accent as text or icon colour; differs from the fill only for a picked colour. */
   --p-accent-ink: var(--accent-text-light);
   --p-accent-soft: color-mix(in oklab, var(--p-accent) 10%, var(--p-card));
-  --p-price: var(--p-accent-ink);
-  --p-sale: #d03b3b;
+  /* Neutral fill for placeholders and quiet surfaces. */
+  --p-quiet: color-mix(in oklab, var(--p-fg) 5%, var(--p-card));
+  --p-price: var(--p-fg);
+  --p-sale: #c2362f;
   /* Neobrutalist borders and block shadows. */
   --p-ink: var(--p-fg);
   --p-shadow: rgb(15 23 42 / 0.2);
@@ -187,12 +193,12 @@
 }
 
 .profile-surface[data-theme="dark"] {
-  --p-bg: #0d1016;
-  --p-card: #171b23;
-  --p-card-hover: #1d222c;
-  --p-line: #272d38;
-  --p-fg: #eef0f3;
-  --p-muted: #9ba4b3;
+  --p-bg: #0f0f10;
+  --p-card: #18181a;
+  --p-card-hover: #1f1f22;
+  --p-line: #2b2b2f;
+  --p-fg: #f0f0f0;
+  --p-muted: #a1a1a6;
   --p-accent: var(--accent-dark);
   --p-accent-fg: var(--accent-fg-dark);
   --p-accent-ink: var(--accent-text-dark);
@@ -205,12 +211,12 @@
 
 @media (prefers-color-scheme: dark) {
   .profile-surface[data-theme="system"] {
-    --p-bg: #0d1016;
-    --p-card: #171b23;
-    --p-card-hover: #1d222c;
-    --p-line: #272d38;
-    --p-fg: #eef0f3;
-    --p-muted: #9ba4b3;
+    --p-bg: #0f0f10;
+    --p-card: #18181a;
+    --p-card-hover: #1f1f22;
+    --p-line: #2b2b2f;
+    --p-fg: #f0f0f0;
+    --p-muted: #a1a1a6;
     --p-accent: var(--accent-dark);
     --p-accent-fg: var(--accent-fg-dark);
     --p-accent-ink: var(--accent-text-dark);
@@ -458,7 +464,6 @@
     border: 1px solid var(--p-line);
     border-radius: var(--p-r-card);
     background-color: var(--p-card);
-    box-shadow: 0 1px 2px rgb(17 24 39 / 0.05);
   }
   /* One-line rows follow the "Kapsul" shape all the way. */
   .p-row {

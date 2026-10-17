@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { LEGAL_LINKS } from "@/components/legal/legal-page";
+import { LEGAL_LINKS } from "@/lib/legal-links";
 
 export function ProfileFooter({
   name,

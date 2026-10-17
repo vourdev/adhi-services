@@ -27,7 +27,10 @@ export default async function ContactPage(): Promise<ReactNode> {
       ? {
           label: "Email",
           value: (
-            <a href={`mailto:${contact.email}`} className="underline underline-offset-2">
+            <a
+              href={`mailto:${contact.email}`}
+              className="underline underline-offset-2"
+            >
               {contact.email}
             </a>
           ),
@@ -37,7 +40,10 @@ export default async function ContactPage(): Promise<ReactNode> {
       ? {
           label: "Telepon",
           value: (
-            <a href={telHref(contact.phone)} className="underline underline-offset-2">
+            <a
+              href={telHref(contact.phone)}
+              className="underline underline-offset-2"
+            >
               {contact.phone}
             </a>
           ),
@@ -62,28 +68,25 @@ export default async function ContactPage(): Promise<ReactNode> {
         cepat.
       </p>
       {rows.length > 0 ? (
-        <dl className="flex flex-col divide-y rounded-lg border">
+        <dl className="p-card flex flex-col divide-y divide-p-line">
           {rows.map((row) => (
             <div
               key={row.label}
               className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-6"
             >
-              <dt className="w-32 shrink-0 text-sm text-muted-foreground">
+              <dt className="w-32 shrink-0 text-sm text-p-muted">
                 {row.label}
               </dt>
-              <dd className="text-foreground">{row.value}</dd>
+              <dd className="text-p-fg">{row.value}</dd>
             </div>
           ))}
         </dl>
       ) : null}
       {owner ? (
-        <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Hanya Anda (pemilik) yang melihat catatan ini: email, telepon,
-          atau alamat usaha belum lengkap. Isi di{" "}
-          <Link
-            href="/admin/settings"
-            className="underline underline-offset-2"
-          >
+        <p className="rounded-[var(--p-r-card)] border border-dashed border-p-line px-4 py-3 text-sm text-p-muted">
+          Hanya Anda (pemilik) yang melihat catatan ini: email, telepon, atau
+          alamat usaha belum lengkap. Isi di{" "}
+          <Link href="/admin/settings" className="underline underline-offset-2">
             Settings
           </Link>
           .

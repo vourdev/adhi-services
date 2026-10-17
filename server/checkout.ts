@@ -1,4 +1,15 @@
-import { and, count, desc, eq, like, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  like,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import * as z from "zod";
 
 import { type Database, writeTransaction } from "@/db/client";
@@ -12,8 +23,8 @@ import {
   webhookEvents,
   type Order,
 } from "@/db/schema";
-import type { MidtransMode, OrderStatus } from "@/lib/domain";
-import { applyDiscount } from "@/lib/pricing";
+import type { OrderStatus } from "@/lib/domain";
+import { priceCart } from "@/lib/pricing";
 import { fail, isUniqueViolation, ok, type Result } from "@/lib/result";
 import {
   generateOrderCode,
@@ -76,8 +87,6 @@ export async function startCheckout(
   context: {
     siteUrl: string;
     visitor: VisitorContext;
-    /** Which Midtrans account `gateway` belongs to; stored on the order. */
-    paymentAccount?: MidtransMode;
     notificationUrl?: string | null;
   },
   nowMs = Date.now()
@@ -90,25 +99,35 @@ export async function startCheckout(
     accessToken: string | null;
   }>
 > {
-  const [row] = await db
-    .select({
-      product: products,
-      profileId: profiles.id,
-      profilePublished: profiles.isPublished,
-    })
+  const ids = input.productIds;
+  const rows = await db
+    .select({ product: products, profilePublished: profiles.isPublished })
     .from(products)
     .innerJoin(profiles, eq(profiles.id, products.profileId))
-    .where(eq(products.id, input.productId))
-    .limit(1);
-
+    .where(inArray(products.id, ids));
+  const byId = new Map(rows.map((row) => [row.product.id, row]));
+  // Every product must exist, be on sale and belong to the same seller.
+  const profileId = rows[0]?.product.profileId;
   if (
-    !row ||
-    row.product.status !== "published" ||
-    !row.profilePublished
+    !profileId ||
+    ids.some((id) => {
+      const row = byId.get(id);
+      return (
+        !row ||
+        row.product.status !== "published" ||
+        !row.profilePublished ||
+        row.product.profileId !== profileId
+      );
+    })
   ) {
-    return fail("Produk tidak tersedia.");
+    return fail(
+      ids.length > 1
+        ? "Ada produk di keranjang yang sudah tidak tersedia. Muat ulang halaman."
+        : "Produk tidak tersedia."
+    );
   }
-  if (row.product.checkoutMethod !== "direct")
+  const items = ids.map((id) => byId.get(id)!.product);
+  if (items.some((product) => product.checkoutMethod !== "direct"))
     return fail("Produk ini dipesan lewat WhatsApp.");
 
   // Same form submitted twice: reuse the order created the first time.
@@ -139,30 +158,28 @@ export async function startCheckout(
     );
   }
 
-  const product = row.product;
   // The price is computed now, on the server; the browser only tells us what it showed.
+  const lines = items.map((product) => ({
+    productId: product.id,
+    listPrice: product.priceAmount,
+  }));
   let applied: AppliedCode | null = null;
   if (input.discountCode) {
     const check = await checkDiscountCode(
       db,
-      {
-        profileId: row.profileId,
-        productId: product.id,
-        priceAmount: product.priceAmount,
-        code: input.discountCode,
-      },
+      { profileId, items: lines, code: input.discountCode },
       nowMs
     );
     if (!check.ok) return fail(check.message);
     applied = check.applied;
   }
-  const price = applied?.price ?? applyDiscount(product.priceAmount, null);
-  if (price.finalPrice !== input.expectedAmount) {
+  const price = applied?.price ?? priceCart(lines, null);
+  if (price.total !== input.expectedAmount) {
     return fail(
       "Total pembayaran berubah. Muat ulang halaman untuk melihat harga terbaru."
     );
   }
-  if (price.finalPrice < 1)
+  if (price.lines.some((line) => line.finalPrice < 1))
     return fail("Produk ini tidak bisa dibayar online.");
   const token = randomToken();
   let order: Order | undefined;
@@ -181,29 +198,32 @@ export async function startCheckout(
           .insert(orders)
           .values({
             code: generateOrderCode(),
-            profileId: row.profileId,
-            productId: product.id,
+            profileId,
+            // The first product; the full list is in order_items.
+            productId: items[0]!.id,
             buyerName: input.buyerName,
             buyerEmail: input.buyerEmail,
             buyerPhone: input.buyerPhone,
-            amount: price.finalPrice,
+            amount: price.total,
             discountCodeId: applied?.id ?? null,
             discountCode: applied?.code ?? null,
             discountAmount: price.discountAmount,
-            paymentAccount: context.paymentAccount ?? "platform",
+            paymentAccount: "platform",
             accessTokenHash: sha256(token),
             idempotencyKey: input.idempotencyKey,
             createdAt: new Date(nowMs),
           })
           .returning();
         if (!created) throw new Error("Order insert returned nothing");
-        await tx.insert(orderItems).values({
-          orderId: created.id,
-          productId: product.id,
-          productName: product.name,
-          listAmount: price.listPrice,
-          unitAmount: price.finalPrice,
-        });
+        await tx.insert(orderItems).values(
+          items.map((product, index) => ({
+            orderId: created.id,
+            productId: product.id,
+            productName: product.name,
+            listAmount: price.lines[index]!.listPrice,
+            unitAmount: price.lines[index]!.finalPrice,
+          }))
+        );
         return created;
       });
     } catch (error) {
@@ -227,7 +247,11 @@ export async function startCheckout(
     payment = await gateway.createTransaction({
       orderCode: order.code,
       amount: order.amount,
-      item: { id: product.id, name: product.name },
+      items: items.map((product, index) => ({
+        id: product.id,
+        name: product.name,
+        price: price.lines[index]!.finalPrice,
+      })),
       buyer: {
         name: input.buyerName,
         email: input.buyerEmail,
@@ -261,9 +285,9 @@ export async function startCheckout(
   await recordServerEvent(
     db,
     {
-      profileId: row.profileId,
+      profileId,
       type: "payment_initiated",
-      productId: product.id,
+      productId: items[0]!.id,
       orderId: order.id,
     },
     context.visitor
@@ -330,15 +354,27 @@ export async function applyGatewayStatus(
     if (updated.length === 0) return null;
 
     if (target === "paid") {
-      const product = await tx.query.products.findFirst({
-        where: eq(products.id, order.productId),
-        columns: { deliveryType: true },
-      });
-      if (product && product.deliveryType !== "none") {
+      // One download grant per product in the order that has a file or link.
+      const delivered = await tx
+        .select({ productId: products.id })
+        .from(orderItems)
+        .innerJoin(products, eq(products.id, orderItems.productId))
+        .where(
+          and(
+            eq(orderItems.orderId, order.id),
+            ne(products.deliveryType, "none")
+          )
+        );
+      if (delivered.length > 0) {
         await tx
           .insert(digitalDeliveries)
-          .values({ orderId: order.id, productId: order.productId })
-          .onConflictDoNothing({ target: digitalDeliveries.orderId });
+          .values(
+            delivered.map((item) => ({
+              orderId: order.id,
+              productId: item.productId,
+            }))
+          )
+          .onConflictDoNothing();
       }
     }
     return target;
@@ -556,6 +592,44 @@ export async function handleMidtransRecurringNotification(
 
 // ------------------------------------------------------------ buyer views
 
+/** The products of an order, in the order they were bought, each with its download grant (once paid). */
+export async function loadOrderLines(db: Database, orderId: string) {
+  const rows = await db
+    .select({
+      item: orderItems,
+      product: {
+        slug: products.slug,
+        coverUrl: products.coverUrl,
+        deliveryType: products.deliveryType,
+      },
+      delivery: digitalDeliveries,
+    })
+    .from(orderItems)
+    .innerJoin(products, eq(products.id, orderItems.productId))
+    .leftJoin(
+      digitalDeliveries,
+      and(
+        eq(digitalDeliveries.orderId, orderItems.orderId),
+        eq(digitalDeliveries.productId, orderItems.productId)
+      )
+    )
+    .where(eq(orderItems.orderId, orderId))
+    // Inserted in one statement, so rowid keeps the order of the cart.
+    .orderBy(sql`order_items.rowid`);
+  return rows.map(({ item, product, delivery }) => ({
+    productId: item.productId,
+    name: item.productName,
+    slug: product.slug,
+    coverUrl: product.coverUrl,
+    deliveryType: product.deliveryType,
+    listAmount: item.listAmount ?? item.unitAmount,
+    unitAmount: item.unitAmount,
+    delivery,
+  }));
+}
+
+export type OrderLine = Awaited<ReturnType<typeof loadOrderLines>>[number];
+
 /** Finds an order by code and access token. Wrong token behaves like a missing order. */
 export async function findOrderForBuyer(
   db: Database,
@@ -576,19 +650,14 @@ export async function findOrderForBuyer(
       emailKey !== undefined &&
       isOrderEmailKey(key, order.code, order.accessTokenHash, emailKey.secret);
   if (!allowed) return null;
-  const [product, delivery, profile] = await Promise.all([
-    db.query.products.findFirst({ where: eq(products.id, order.productId) }),
-    db.query.digitalDeliveries.findFirst({
-      where: eq(digitalDeliveries.orderId, order.id),
-    }),
+  const [lines, profile] = await Promise.all([
+    loadOrderLines(db, order.id),
     db.query.profiles.findFirst({
       where: eq(profiles.id, order.profileId),
       columns: { username: true, displayName: true, whatsappNumber: true },
     }),
   ]);
-  return product && profile
-    ? { order, product, delivery: delivery ?? null, profile }
-    : null;
+  return lines.length > 0 && profile ? { order, lines, profile } : null;
 }
 
 const STATUS_RECHECK_MS = 10_000;
@@ -736,15 +805,21 @@ export async function listOrders(
       .select({
         order: orders,
         productName: products.name,
+        /** Products in the order; the name above is the first one. */
+        itemCount: sql<number>`(select count(*) from order_items where order_items.order_id = ${orders.id})`,
         transactionStatus: paymentTransactions.transactionStatus,
         paymentType: paymentTransactions.paymentType,
-        downloadCount: digitalDeliveries.downloadCount,
-        maxDownloads: digitalDeliveries.maxDownloads,
+        // Summed over the order's products (one grant each).
+        downloadCount: sql<
+          number | null
+        >`(select sum(download_count) from digital_deliveries where digital_deliveries.order_id = ${orders.id})`,
+        maxDownloads: sql<
+          number | null
+        >`(select sum(max_downloads) from digital_deliveries where digital_deliveries.order_id = ${orders.id})`,
       })
       .from(orders)
       .innerJoin(products, eq(products.id, orders.productId))
       .leftJoin(paymentTransactions, eq(paymentTransactions.orderId, orders.id))
-      .leftJoin(digitalDeliveries, eq(digitalDeliveries.orderId, orders.id))
       .where(where)
       .orderBy(desc(orders.createdAt))
       .limit(ORDERS_PAGE_SIZE)

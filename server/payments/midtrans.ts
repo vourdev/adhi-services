@@ -68,14 +68,13 @@ export function createMidtransGateway(
           order_id: input.orderCode,
           gross_amount: input.amount,
         },
-        item_details: [
-          {
-            id: input.item.id.slice(0, 50),
-            price: input.amount,
-            quantity: 1,
-            name: input.item.name.slice(0, 50),
-          },
-        ],
+        // Midtrans requires the item prices to add up to gross_amount.
+        item_details: input.items.map((item) => ({
+          id: item.id.slice(0, 50),
+          price: item.price,
+          quantity: 1,
+          name: item.name.slice(0, 50),
+        })),
         customer_details: {
           first_name: input.buyer.name.slice(0, 60),
           email: input.buyer.email,

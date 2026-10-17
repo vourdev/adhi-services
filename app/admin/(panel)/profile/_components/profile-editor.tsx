@@ -32,11 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  lookFromProfile,
-  type NamedPreset,
-  PRESETS,
-} from "@/lib/profile-look";
+import { lookFromProfile, type NamedPreset, PRESETS } from "@/lib/profile-look";
 import type { PublicProfile } from "@/lib/public-types";
 import { profileInputSchema } from "@/lib/validation";
 
@@ -92,13 +88,13 @@ export function ProfileEditor({
   }
 
   const look = lookFromProfile({
-      theme: values.theme,
-      accent: values.accent,
-      themePreset: values.themePreset,
-      customTheme: values.customTheme,
-      fontFamily: values.fontFamily,
-      cardShape: values.cardShape,
-      cardStyle: values.cardStyle,
+    theme: values.theme,
+    accent: values.accent,
+    themePreset: values.themePreset,
+    customTheme: values.customTheme,
+    fontFamily: values.fontFamily,
+    cardShape: values.cardShape,
+    cardStyle: values.cardStyle,
   });
   const fixedMode =
     look.preset === "custom" || PRESETS[look.preset].mode === "follow"

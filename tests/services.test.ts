@@ -458,6 +458,7 @@ function fakeGateway(serverKey: string) {
   const statuses = new Map<string, GatewayStatus>();
   const created: string[] = [];
   const charged = new Map<string, number>();
+  const lines = new Map<string, { id: string; price: number }[]>();
   const gateway: PaymentGateway = {
     provider: "midtrans",
     async createTransaction(input) {
@@ -465,6 +466,7 @@ function fakeGateway(serverKey: string) {
       await new Promise((resolve) => setImmediate(resolve));
       created.push(input.orderCode);
       charged.set(input.orderCode, input.amount);
+      lines.set(input.orderCode, input.items);
       return {
         token: `tok-${input.orderCode}`,
         redirectUrl: `https://app.sandbox.midtrans.com/snap/v2/vtweb/tok-${input.orderCode}`,
@@ -477,7 +479,7 @@ function fakeGateway(serverKey: string) {
       return midtransSignature(payload, serverKey) === payload.signature_key;
     },
   };
-  return { gateway, statuses, created, charged };
+  return { gateway, statuses, created, charged, lines };
 }
 
 function productInput(overrides: Partial<ProductInput> = {}): ProductInput {
@@ -583,7 +585,7 @@ describe("direct checkout, webhook and delivery", () => {
 
   test("checkout creates a pending order and a payment, reusing it on double submit", async () => {
     const input = {
-      productId,
+      productIds: [productId],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: 25000,
       discountCode: null,
@@ -852,7 +854,12 @@ describe("direct checkout, webhook and delivery", () => {
     const before = await getOverviewTotals(db, profileId, range);
     const result = await ingestClientEvent(
       db,
-      { type: "product_view", eventKey: crypto.randomUUID(), profileId, productId },
+      {
+        type: "product_view",
+        eventKey: crypto.randomUUID(),
+        profileId,
+        productId,
+      },
       visitor("product-only")
     );
     assert.equal(result.recorded, true);
@@ -886,7 +893,7 @@ describe("discount codes", () => {
       db,
       gateway,
       {
-        productId,
+        productIds: [productId],
         idempotencyKey: crypto.randomUUID(),
         expectedAmount: 78000,
         discountCode: null,
@@ -1028,7 +1035,7 @@ describe("discount codes", () => {
     assert.ok(
       (
         await checkout({
-          productId: otherProductId,
+          productIds: [otherProductId],
           discountCode: "KHUSUS",
           expectedAmount: 70200,
         })
@@ -1214,7 +1221,7 @@ describe("discount codes", () => {
     });
     const extraId = extra.ok ? extra.data.id : "";
 
-    assert.equal(await hasUsableCodes(db, thirdId, id), false);
+    assert.equal(await hasUsableCodes(db, thirdId, [id]), false);
     await createDiscountCode(
       db,
       thirdId,
@@ -1230,7 +1237,182 @@ describe("discount codes", () => {
       thirdId,
       code({ code: "LAIN1", productId: extraId })
     );
-    assert.equal(await hasUsableCodes(db, thirdId, id), false);
-    assert.equal(await hasUsableCodes(db, thirdId, extraId), true);
+    assert.equal(await hasUsableCodes(db, thirdId, [id]), false);
+    assert.equal(await hasUsableCodes(db, thirdId, [extraId]), true);
+  });
+});
+
+describe("cart orders", () => {
+  const { gateway, charged, lines } = fakeGateway("SB-Mid-server-TEST");
+  const site = { siteUrl: "https://example.id", visitor: visitor("keranjang") };
+  let ebookId: string;
+  let templateId: string;
+  let serviceId: string;
+  let whatsappId: string;
+
+  const make = async (overrides: Partial<ProductInput>) => {
+    const created = await createProduct(
+      db,
+      profileId,
+      productInput(overrides),
+      {
+        profileWhatsapp: "081234567890",
+        paymentsReady: true,
+      }
+    );
+    assert.ok(created.ok);
+    return created.ok ? created.data.id : "";
+  };
+
+  const checkout = (productIds: string[], extra: Partial<CheckoutInput>) =>
+    startCheckout(
+      db,
+      gateway,
+      {
+        productIds,
+        idempotencyKey: crypto.randomUUID(),
+        expectedAmount: 0,
+        discountCode: null,
+        buyerName: "Rina",
+        buyerEmail: "rina@example.id",
+        buyerPhone: null,
+        ...extra,
+      },
+      site
+    );
+
+  before(async () => {
+    ebookId = await make({ priceAmount: 30000 });
+    templateId = await make({ priceAmount: 20000 });
+    serviceId = await make({
+      priceAmount: 15000,
+      productType: "service",
+      deliveryType: "none",
+      deliveryUrl: null,
+    });
+    whatsappId = await make({ priceAmount: 9000, checkoutMethod: "whatsapp" });
+  });
+
+  test("several products are one order, one payment, one line each", async () => {
+    const result = await checkout([ebookId, templateId], {
+      expectedAmount: 50000,
+    });
+    assert.ok(result.ok);
+    const code = result.ok ? result.data.orderCode : "";
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.code, code),
+    });
+    assert.equal(order?.amount, 50000);
+    assert.equal(charged.get(code), 50000);
+    assert.deepEqual(
+      lines.get(code)?.map((line) => [line.id, line.price]),
+      [
+        [ebookId, 30000],
+        [templateId, 20000],
+      ]
+    );
+    const items = await db.query.orderItems.findMany({
+      where: eq(orderItems.orderId, order?.id ?? ""),
+    });
+    assert.equal(items.length, 2);
+  });
+
+  test("a fixed code comes off once and the gateway lines still add up", async () => {
+    assert.ok(
+      (
+        await createDiscountCode(
+          db,
+          profileId,
+          discountCodeInputSchema.parse({
+            code: "CART10K",
+            discountType: "fixed",
+            discountValue: 10000,
+          })
+        )
+      ).ok
+    );
+    const result = await checkout([ebookId, templateId], {
+      discountCode: "CART10K",
+      expectedAmount: 40000,
+    });
+    assert.ok(result.ok);
+    const code = result.ok ? result.data.orderCode : "";
+    const sent = lines.get(code) ?? [];
+    assert.equal(
+      sent.reduce((sum, line) => sum + line.price, 0),
+      40000
+    );
+    assert.ok(sent.every((line) => line.price >= 1));
+  });
+
+  test("a code for one product only lowers that product", async () => {
+    await createDiscountCode(
+      db,
+      profileId,
+      discountCodeInputSchema.parse({
+        code: "SEPARUH",
+        discountType: "percent",
+        discountValue: 50,
+        productId: templateId,
+      })
+    );
+    const result = await checkout([ebookId, templateId], {
+      discountCode: "SEPARUH",
+      expectedAmount: 40000,
+    });
+    assert.ok(result.ok);
+    assert.deepEqual(
+      lines.get(result.ok ? result.data.orderCode : "")?.map((l) => l.price),
+      [30000, 10000]
+    );
+    assert.deepEqual(
+      await checkout([ebookId], {
+        discountCode: "SEPARUH",
+        expectedAmount: 30000,
+      }),
+      { ok: false, error: CODE_REJECTION_MESSAGES.wrong_product }
+    );
+  });
+
+  test("WhatsApp products cannot be paid in a cart", async () => {
+    const result = await checkout([ebookId, whatsappId], {
+      expectedAmount: 39000,
+    });
+    assert.equal(result.ok, false);
+  });
+
+  test("once paid, each product with a file or link gets its own download", async () => {
+    const result = await checkout([ebookId, serviceId, templateId], {
+      expectedAmount: 65000,
+    });
+    assert.ok(result.ok);
+    const { orderCode, accessToken } = result.ok
+      ? result.data
+      : { orderCode: "", accessToken: null };
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.code, orderCode),
+    });
+    assert.ok(order);
+    const applied = await applyGatewayStatus(db, order, {
+      orderId: orderCode,
+      transactionStatus: "settlement",
+      fraudStatus: null,
+      statusCode: "200",
+      grossAmount: 65000,
+      transactionId: "cart-1",
+      paymentType: "qris",
+    });
+    assert.deepEqual(applied, { outcome: "applied", status: "paid" });
+
+    const found = await findOrderForBuyer(db, orderCode, accessToken);
+    assert.deepEqual(
+      found?.lines.map((line) => [line.productId, Boolean(line.delivery)]),
+      [
+        [ebookId, true],
+        [serviceId, false],
+        [templateId, true],
+      ],
+      "in cart order; the service has nothing to download"
+    );
   });
 });

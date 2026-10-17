@@ -62,13 +62,12 @@ export async function GET(
   ) {
     const check = await checkDiscountCode(db, {
       profileId: product.profileId,
-      productId: product.id,
-      priceAmount: product.priceAmount,
+      items: [{ productId: product.id, listPrice: product.priceAmount }],
       code,
     });
     if (check.ok) {
       const { price } = check.applied;
-      harga = `${formatRupiah(price.finalPrice)} dengan kode diskon ${check.applied.code}, harga normal ${formatRupiah(price.listPrice)}`;
+      harga = `${formatRupiah(price.total)} dengan kode diskon ${check.applied.code}, harga normal ${formatRupiah(price.subtotal)}`;
     }
   }
 

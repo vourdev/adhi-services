@@ -381,8 +381,8 @@ function MetricDefinitions(): ReactNode {
           <dd>
             Halaman profil dibuka di browser. Membuka ulang halaman yang sama
             dalam 30 menit dihitung sekali. Bot, link preview, dan kunjungan
-            pemilik profil (saat login) tidak dihitung. Aturan ini berlaku
-            sejak 15 Okt 2026; data sebelumnya tidak diubah.
+            pemilik profil (saat login) tidak dihitung. Aturan ini berlaku sejak
+            15 Okt 2026; data sebelumnya tidak diubah.
           </dd>
         </div>
         <div>

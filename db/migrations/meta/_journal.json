@@ -85,6 +85,13 @@
       "when": 1792216088862,
       "tag": "0011_single_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792216516098,
+      "tag": "0012_delivery_per_product",
+      "breakpoints": true
     }
   ]
 }

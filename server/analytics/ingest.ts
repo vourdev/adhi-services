@@ -1,12 +1,7 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
-import {
-  analyticsEvents,
-  products,
-  profileLinks,
-  profiles,
-} from "@/db/schema";
+import { analyticsEvents, products, profileLinks, profiles } from "@/db/schema";
 import {
   classifySource,
   cleanUtm,
@@ -104,8 +99,7 @@ export async function ingestClientEvent(
     .where(eq(profiles.id, input.profileId))
     .limit(1);
   if (!profile) return { recorded: false, reason: "unknown_target" };
-  if (!profile.isPublished)
-    return { recorded: false, reason: "unpublished" };
+  if (!profile.isPublished) return { recorded: false, reason: "unpublished" };
 
   let productId: string | null = null;
   if (input.type !== "profile_view") {

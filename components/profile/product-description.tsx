@@ -31,7 +31,7 @@ function toBlocks(text: string): Block[] {
  */
 export function ProductDescription({ text }: { text: string }): ReactNode {
   return (
-    <div className="flex flex-col gap-3.5 text-[15.5px] leading-relaxed text-p-fg/90">
+    <div className="flex flex-col gap-3.5 text-[15px] leading-relaxed text-p-fg/85">
       {toBlocks(text).map((block, index) =>
         block.kind === "text" ? (
           <p key={index} className="text-pretty">
@@ -48,7 +48,7 @@ export function ProductDescription({ text }: { text: string }): ReactNode {
               <li key={itemIndex} className="flex gap-3">
                 <span
                   aria-hidden
-                  className="mt-[0.6em] size-1.5 shrink-0 rounded-full bg-p-accent"
+                  className="mt-[0.6em] size-1.5 shrink-0 rounded-full bg-p-fg/50"
                 />
                 <span className="min-w-0 text-pretty">{item}</span>
               </li>

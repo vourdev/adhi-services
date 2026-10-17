@@ -79,8 +79,8 @@ export default async function TermsPage(): Promise<ReactNode> {
           </li>
           <li>
             Pesanan dianggap lunas setelah penyedia pembayaran mengonfirmasi
-            pembayaran. Pesanan yang tidak dibayar sampai batas waktu
-            pembayaran akan batal dengan sendirinya.
+            pembayaran. Pesanan yang tidak dibayar sampai batas waktu pembayaran
+            akan batal dengan sendirinya.
           </li>
           <li>
             Untuk produk yang dipesan lewat WhatsApp, pembayaran dan pengiriman
@@ -111,7 +111,10 @@ export default async function TermsPage(): Promise<ReactNode> {
         <p>
           Produk digital tidak dapat dikembalikan setelah akses diberikan,
           kecuali dalam kondisi yang dijelaskan di{" "}
-          <Link href="/kebijakan-refund" className="underline underline-offset-2">
+          <Link
+            href="/kebijakan-refund"
+            className="underline underline-offset-2"
+          >
             Kebijakan Refund
           </Link>
           .

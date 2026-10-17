@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { isProduction, siteUrl } from "@/lib/env";
 import { checkoutInputSchema, fieldErrors } from "@/lib/validation";
 import { readVisitorFromHeaders } from "@/server/analytics/visitor";
+import { readCart, writeCart } from "@/server/cart";
 import { startCheckout } from "@/server/checkout";
 import { schedulePaymentLinkEmail } from "@/server/email";
 import {
@@ -23,13 +24,14 @@ export type CheckoutState = {
   fieldErrors?: Record<string, string>;
 } | null;
 
-/** Creates the order and payment, then sends the buyer to the Midtrans payment page. */
+/** Creates the order and payment for one product or the cart, then sends the buyer to the payment page. */
 export async function checkoutAction(
   _previous: CheckoutState,
   formData: FormData
 ): Promise<CheckoutState> {
+  const agreed = formData.get("agree") === "on";
   const parsed = checkoutInputSchema.safeParse({
-    productId: formData.get("productId"),
+    productIds: formData.getAll("productId"),
     idempotencyKey: formData.get("idempotencyKey"),
     expectedAmount: formData.get("expectedAmount"),
     discountCode: formData.get("discountCode") ?? "",
@@ -37,10 +39,15 @@ export async function checkoutAction(
     buyerEmail: formData.get("buyerEmail"),
     buyerPhone: formData.get("buyerPhone") ?? "",
   });
-  if (!parsed.success)
+  if (!parsed.success || !agreed)
     return {
       error: "Periksa kembali data Anda.",
-      fieldErrors: fieldErrors(parsed.error),
+      fieldErrors: {
+        ...(parsed.success ? {} : fieldErrors(parsed.error)),
+        ...(agreed
+          ? {}
+          : { agree: "Setujui Syarat & Ketentuan dan Kebijakan Refund." }),
+      },
     };
 
   const db = getDb();
@@ -69,6 +76,11 @@ export async function checkoutAction(
   // Lets Midtrans' Unfinish redirect, which only names the order, bring this
   // browser back to the order page (server/order-access.ts).
   const { orderId, orderCode, accessToken } = result.data;
+  // Paid-for products leave the cart; anything else in it stays.
+  if (formData.get("fromCart") === "1")
+    await writeCart(
+      (await readCart()).filter((id) => !parsed.data.productIds.includes(id))
+    );
   if (accessToken) {
     // A way back to the payment if the payment page gets closed.
     schedulePaymentLinkEmail(orderId);

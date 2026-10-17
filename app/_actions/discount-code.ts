@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import * as z from "zod";
 
 import { getDb } from "@/db/client";
@@ -15,26 +15,28 @@ export type CodePreview =
       code: string;
       discountAmount: number;
       finalPrice: number;
+      /** Rupiah off per product id, for the per-line prices in the cart. */
+      lineDiscounts: Record<string, number>;
       /** Fresh checkout key: a different total is a different order, not a double submit. */
       idempotencyKey: string;
     }
   | { ok: false; error: string };
 
 const inputSchema = z.object({
-  productId: z.uuid(),
+  productIds: z.array(z.uuid()).min(1).max(20),
   code: z.string().trim().min(1, "Masukkan kode diskon.").max(64),
 });
 
 /**
- * Checks a discount code for one product and returns the new total. Called
+ * Checks a discount code for the products being bought and returns the new total. Called
  * when the buyer taps "Pakai"; the order itself checks the code again.
  * Limited per visitor so short codes cannot be guessed by trying many.
  */
 export async function previewDiscountCodeAction(
-  productId: unknown,
+  productIds: unknown,
   code: unknown
 ): Promise<CodePreview> {
-  const parsed = inputSchema.safeParse({ productId, code });
+  const parsed = inputSchema.safeParse({ productIds, code });
   if (!parsed.success)
     return {
       ok: false,
@@ -58,27 +60,45 @@ export async function previewDiscountCodeAction(
     };
   }
 
-  const [row] = await db
-    .select({ product: products, profilePublished: profiles.isPublished })
+  const ids = [...new Set(parsed.data.productIds)];
+  const rows = await db
+    .select({ product: products })
     .from(products)
     .innerJoin(profiles, eq(profiles.id, products.profileId))
-    .where(eq(products.id, parsed.data.productId))
-    .limit(1);
-  if (!row || row.product.status !== "published" || !row.profilePublished)
+    .where(
+      and(
+        inArray(products.id, ids),
+        eq(products.status, "published"),
+        eq(profiles.isPublished, true)
+      )
+    );
+  const profileId = rows[0]?.product.profileId;
+  if (
+    !profileId ||
+    rows.length !== ids.length ||
+    rows.some((row) => row.product.profileId !== profileId)
+  )
     return { ok: false, error: "Produk tidak tersedia." };
+  const byId = new Map(rows.map((row) => [row.product.id, row.product]));
 
   const check = await checkDiscountCode(db, {
-    profileId: row.product.profileId,
-    productId: row.product.id,
-    priceAmount: row.product.priceAmount,
+    profileId,
+    items: ids.map((id) => ({
+      productId: id,
+      listPrice: byId.get(id)!.priceAmount,
+    })),
     code: parsed.data.code,
   });
   if (!check.ok) return { ok: false, error: check.message };
+  const { price } = check.applied;
   return {
     ok: true,
     code: check.applied.code,
-    discountAmount: check.applied.price.discountAmount,
-    finalPrice: check.applied.price.finalPrice,
+    discountAmount: price.discountAmount,
+    finalPrice: price.total,
+    lineDiscounts: Object.fromEntries(
+      price.lines.map((line) => [line.productId, line.discountAmount])
+    ),
     idempotencyKey: crypto.randomUUID(),
   };
 }

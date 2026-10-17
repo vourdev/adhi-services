@@ -44,13 +44,13 @@ export default async function RefundPolicyPage(): Promise<ReactNode> {
             untuk pesanan yang sama.
           </li>
           <li>
-            <strong>Produk tidak terkirim.</strong> Pembayaran sudah lunas tetapi
-            link produk tidak muncul di halaman pesanan maupun email, dan tidak
-            bisa kami perbaiki.
+            <strong>Produk tidak terkirim.</strong> Pembayaran sudah lunas
+            tetapi link produk tidak muncul di halaman pesanan maupun email, dan
+            tidak bisa kami perbaiki.
           </li>
           <li>
-            <strong>Produk tidak bisa diakses.</strong> File atau link rusak
-            dan tidak diperbaiki setelah Anda melaporkannya.
+            <strong>Produk tidak bisa diakses.</strong> File atau link rusak dan
+            tidak diperbaiki setelah Anda melaporkannya.
           </li>
         </ul>
       </LegalSection>
@@ -81,8 +81,7 @@ export default async function RefundPolicyPage(): Promise<ReactNode> {
             pembayaran ganda atau tangkapan layar error).
           </li>
           <li>
-            Kami memeriksa permintaan Anda dan mengabarkan hasilnya lewat
-            email.
+            Kami memeriksa permintaan Anda dan mengabarkan hasilnya lewat email.
           </li>
         </ol>
       </LegalSection>
@@ -90,8 +89,8 @@ export default async function RefundPolicyPage(): Promise<ReactNode> {
       <LegalSection title="Proses pengembalian dana">
         <ul className={list}>
           <li>
-            Permintaan yang disetujui diproses paling lambat 14 hari kerja
-            sejak disetujui.
+            Permintaan yang disetujui diproses paling lambat 14 hari kerja sejak
+            disetujui.
           </li>
           <li>
             Dana dikembalikan ke rekening bank atau e-wallet atas nama pembeli,

@@ -16,23 +16,25 @@ export type AppliedDiscount = {
   code: string;
   discountAmount: number;
   finalPrice: number;
+  /** Rupiah off per product id. */
+  lineDiscounts: Record<string, number>;
   idempotencyKey: string;
 };
 
 /**
- * "Punya kode diskon?": collapsed until the buyer opens it, then a code
- * input checked on the server. Lives inside the checkout form, so Enter
- * applies the code instead of submitting the order.
+ * "Pakai kode diskon": collapsed until the buyer opens it, then a code
+ * input checked on the server for the products being bought. Lives inside
+ * the checkout form, so Enter applies the code instead of submitting it.
  *
  * Rendered only from client components (the checkout form and the
  * WhatsApp order box), which is why this file has no "use client".
  */
 export function DiscountCodeField({
-  productId,
+  productIds,
   applied,
   onChange,
 }: {
-  productId: string;
+  productIds: string[];
   applied: AppliedDiscount | null;
   onChange: (applied: AppliedDiscount | null) => void;
 }): ReactNode {
@@ -49,7 +51,7 @@ export function DiscountCodeField({
       return;
     }
     startTransition(async () => {
-      const result = await previewDiscountCodeAction(productId, code);
+      const result = await previewDiscountCodeAction(productIds, code);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -59,6 +61,7 @@ export function DiscountCodeField({
         code: result.code,
         discountAmount: result.discountAmount,
         finalPrice: result.finalPrice,
+        lineDiscounts: result.lineDiscounts,
         idempotencyKey: result.idempotencyKey,
       });
     });
@@ -73,11 +76,8 @@ export function DiscountCodeField({
 
   if (applied) {
     return (
-      <div className="flex items-center gap-3 rounded-[var(--p-r-card)] bg-p-accent-soft py-2.5 pr-2 pl-3.5">
-        <Icon
-          icon={DiscountTag01Icon}
-          className="size-5 shrink-0 text-p-accent-ink"
-        />
+      <div className="flex items-center gap-3 rounded-[var(--p-r-media)] border border-p-line bg-p-quiet py-2 pr-1.5 pl-3.5">
+        <Icon icon={DiscountTag01Icon} className="size-5 shrink-0 text-p-fg" />
         <p className="min-w-0 flex-1 text-[14px] leading-snug" role="status">
           Kode <span className="font-semibold">{applied.code}</span> dipakai,
           hemat {formatRupiah(applied.discountAmount)}
@@ -102,10 +102,10 @@ export function DiscountCodeField({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-fit items-center gap-2 rounded-full py-2 text-[14px] font-semibold text-p-accent-ink"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--p-r-media)] border border-p-line text-[15px] font-semibold text-p-fg transition-colors hover:border-p-fg/40"
       >
         <Icon icon={DiscountTag01Icon} className="size-5" />
-        Punya kode diskon?
+        Pakai kode diskon
       </button>
     );
   }

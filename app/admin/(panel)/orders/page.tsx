@@ -118,6 +118,7 @@ export default async function OrdersPage({
                 ({
                   order,
                   productName,
+                  itemCount,
                   paymentType,
                   downloadCount,
                   maxDownloads,
@@ -141,6 +142,12 @@ export default async function OrdersPage({
                     </TableCell>
                     <TableCell className="max-w-[14rem] truncate">
                       {productName}
+                      {itemCount > 1 ? (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          +{itemCount - 1}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatRupiah(order.amount)}
