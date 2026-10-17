@@ -10,7 +10,7 @@ import {
 } from "@/components/legal/legal-page";
 import { getDb } from "@/db/client";
 import { getCurrentOwner } from "@/server/session";
-import { getPlatformSettings } from "@/server/super-admin";
+import { getPlatformSettings } from "@/server/platform-settings";
 
 export const metadata: Metadata = {
   title: "Kontak",
@@ -51,7 +51,7 @@ export default async function ContactPage(): Promise<ReactNode> {
       : null,
   ].filter((row) => row !== null);
   const missing = rows.length < 3;
-  // Only the super admin, who can fill the fields, sees what is missing.
+  // Only the signed-in owner, who can fill the fields, sees what is missing.
   const owner = missing ? await getCurrentOwner() : null;
 
   return (
@@ -76,15 +76,15 @@ export default async function ContactPage(): Promise<ReactNode> {
           ))}
         </dl>
       ) : null}
-      {owner?.user.role === "super_admin" ? (
+      {owner ? (
         <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-          Hanya Anda (super admin) yang melihat catatan ini: email, telepon,
+          Hanya Anda (pemilik) yang melihat catatan ini: email, telepon,
           atau alamat usaha belum lengkap. Isi di{" "}
           <Link
-            href="/admin/super/settings"
+            href="/admin/settings"
             className="underline underline-offset-2"
           >
-            Pengaturan Brand Platform
+            Settings
           </Link>
           .
         </p>

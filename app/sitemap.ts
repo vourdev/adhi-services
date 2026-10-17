@@ -3,14 +3,13 @@ import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 
 import { getDb } from "@/db/client";
-import { products, profiles, users } from "@/db/schema";
+import { products, profiles } from "@/db/schema";
 import { siteUrl } from "@/lib/env";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
   const db = getDb();
   const base = siteUrl();
-  // Suspended owners' pages are offline, so they are left out.
   const published = await db
     .select({
       id: profiles.id,
@@ -18,8 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       updatedAt: profiles.updatedAt,
     })
     .from(profiles)
-    .innerJoin(users, eq(users.id, profiles.ownerId))
-    .where(and(eq(profiles.isPublished, true), eq(users.status, "active")));
+    .where(eq(profiles.isPublished, true));
   const entries: MetadataRoute.Sitemap = [
     "/syarat-ketentuan",
     "/kebijakan-refund",

@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import * as z from "zod";
 
-import { encryptionSecret, isProduction } from "@/lib/env";
+import { isProduction } from "@/lib/env";
 import { fail, ok, type Result } from "@/lib/result";
 import {
   fieldErrors,
@@ -30,9 +30,7 @@ export async function updateProfileAction(input: unknown): Promise<Result> {
   const parsed = profileInputSchema.safeParse(input);
   if (!parsed.success)
     return fail("Periksa kembali isian profil.", fieldErrors(parsed.error));
-  const result = await updateProfile(db, profileId, parsed.data, {
-    premium: owner.user.plan === "premium",
-  });
+  const result = await updateProfile(db, profileId, parsed.data);
   revalidateProfile(owner.profile.username);
   return result;
 }
@@ -44,10 +42,7 @@ export async function updatePublicSettingsAction(
   const parsed = publicSettingsSchema.safeParse(input);
   if (!parsed.success)
     return fail("Periksa kembali isian.", fieldErrors(parsed.error));
-  const result = await updatePublicSettings(db, profileId, parsed.data, {
-    premium: owner.user.plan === "premium",
-    encryptionSecret: encryptionSecret(),
-  });
+  const result = await updatePublicSettings(db, profileId, parsed.data);
   if (result.ok) {
     revalidateProfile(owner.profile.username);
     revalidateProfile(result.data.username);

@@ -15,7 +15,6 @@ import {
   lookMode,
   PRESETS,
   surfaceAttributes,
-  visitorLook,
 } from "@/lib/profile-look";
 import { profileInputSchema } from "@/lib/validation";
 
@@ -112,26 +111,6 @@ describe("profile look", () => {
         customTheme: null,
       }
     );
-  });
-
-  test("on free, visitors get the standard look with the owner's accent and mode", () => {
-    const look = visitorLook(
-      {
-        theme: "dark",
-        accent: "#ff6600",
-        themePreset: "neon",
-        fontFamily: "Inter",
-        cardShape: "pill",
-        cardStyle: "glow",
-      },
-      false
-    );
-    assert.equal(look.preset, "default");
-    assert.equal(look.font, "Plus Jakarta Sans");
-    assert.equal(look.cardShape, "smooth");
-    assert.equal(look.cardStyle, "solid");
-    assert.equal(look.accent, "#ff6600");
-    assert.equal(look.theme, "dark");
   });
 
   test("font, card shape and card style all reach the page", () => {

@@ -18,7 +18,6 @@ import {
   type ProfileTheme,
   type ThemePreset,
 } from "./domain";
-import { FREE_PROFILE_LOOK } from "./plan";
 
 /**
  * How a profile's pages look: the public profile, product, checkout and
@@ -198,16 +197,6 @@ export function lookFromProfile(profile: LookFields): ProfileLook {
     cardStyle: pick(CARD_STYLES, profile.cardStyle, "solid"),
     customTheme: profile.customTheme ?? null,
   };
-}
-
-/** The look visitors get: premium styling only while the owner has premium. */
-export function visitorLook(
-  profile: LookFields,
-  premium: boolean
-): ProfileLook {
-  return lookFromProfile(
-    premium ? profile : { ...profile, ...FREE_PROFILE_LOOK }
-  );
 }
 
 /** Light or dark as rendered: some presets fix it, the others follow the profile's setting. */

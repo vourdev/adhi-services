@@ -60,7 +60,7 @@ function pick<T extends string>(
 export default async function ProductsPage({
   searchParams,
 }: Props): Promise<ReactNode> {
-  const { db, profileId, owner } = await adminContext();
+  const { db, profileId } = await adminContext();
   const params = await searchParams;
   const status = pick(params.status, PRODUCT_STATUSES);
   const method = pick(params.method, CHECKOUT_METHODS);
@@ -84,7 +84,7 @@ export default async function ProductsPage({
     getProductAnalytics(db, profileId, parseRange({ range: "30d" })),
   ]);
   const stats = new Map(analytics.rows.map((row) => [row.productId, row]));
-  const payments = ownerPayments(owner);
+  const payments = ownerPayments();
   const filtered = Boolean(filters.q || filters.status || filters.method);
 
   return (

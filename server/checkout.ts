@@ -9,7 +9,6 @@ import {
   paymentTransactions,
   products,
   profiles,
-  users,
   webhookEvents,
   type Order,
 } from "@/db/schema";
@@ -96,19 +95,16 @@ export async function startCheckout(
       product: products,
       profileId: profiles.id,
       profilePublished: profiles.isPublished,
-      ownerStatus: users.status,
     })
     .from(products)
     .innerJoin(profiles, eq(profiles.id, products.profileId))
-    .innerJoin(users, eq(users.id, profiles.ownerId))
     .where(eq(products.id, input.productId))
     .limit(1);
 
   if (
     !row ||
     row.product.status !== "published" ||
-    !row.profilePublished ||
-    row.ownerStatus !== "active"
+    !row.profilePublished
   ) {
     return fail("Produk tidak tersedia.");
   }

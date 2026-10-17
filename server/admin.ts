@@ -2,13 +2,11 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 
-import { redirect } from "next/navigation";
-
 import { getDb } from "@/db/client";
 import {
   describePaymentsProblem,
   type PaymentsStatus,
-  paymentsStatusForProfile,
+  paymentsStatus,
 } from "@/server/payments";
 
 import type { SessionOwner } from "./auth";
@@ -21,36 +19,19 @@ export async function adminContext() {
   return { owner, db: getDb(), profileId: owner.profile.id };
 }
 
-/** Protects super-admin actions: must be logged in as super_admin. */
-export async function requireSuperAdmin() {
-  const owner = await requireOwner();
-  if (owner.user.role !== "super_admin") {
-    redirect("/admin");
-  }
-  return owner;
-}
-
-export async function superAdminContext() {
-  const owner = await requireSuperAdmin();
-  return { owner, db: getDb() };
-}
-
-/** Whether the signed-in owner's checkout works, and if not, why, in words fit for their role. */
-export function ownerPayments(owner: SessionOwner): {
+/** Whether checkout works, and if not, why. */
+export function ownerPayments(): {
   status: PaymentsStatus;
   problem: string | null;
 } {
-  const status = paymentsStatusForProfile(
-    owner.profile,
-    owner.user.plan === "premium"
-  );
-  return { status, problem: describePaymentsProblem(status, owner.user.role) };
+  const status = paymentsStatus();
+  return { status, problem: describePaymentsProblem(status) };
 }
 
 export function publishContext(owner: SessionOwner): PublishContext {
   return {
     profileWhatsapp: owner.profile.whatsappNumber,
-    paymentsReady: ownerPayments(owner).status.ready,
+    paymentsReady: ownerPayments().status.ready,
   };
 }
 

@@ -42,8 +42,6 @@ export default async function PanelLayout({
           name: owner.profile.displayName,
           email: owner.user.email,
           username: owner.profile.username,
-          role: owner.user.role,
-          plan: owner.user.plan,
         }}
       />
       <SidebarInset className="min-w-0 overflow-x-clip">

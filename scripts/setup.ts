@@ -54,10 +54,9 @@ async function main() {
   passwordSchema.parse(password);
 
   const starterContent = process.env.SETUP_STARTER_CONTENT !== "false";
-  // The first account runs the platform: super admin, always premium.
   const { profile } = await createOwner(
     db,
-    { email, password, name, username, role: "super_admin", plan: "premium" },
+    { email, password, name, username },
     { starterContent }
   );
 

@@ -66,16 +66,6 @@ export function authSecret(): string {
   return globalForSecret.__linkbioDevSecret;
 }
 
-/**
- * Secret for encrypting the Midtrans server keys members save in Settings.
- * No fallback: a key sealed with a throwaway value would be lost on the
- * next restart. Never change it once keys are stored.
- */
-export function encryptionSecret(): string | null {
-  const value = read("ENCRYPTION_KEY");
-  return value && value.length >= 32 ? value : null;
-}
-
 export function storageDir(): string {
   return read("STORAGE_DIR") ?? "./storage";
 }

@@ -51,13 +51,13 @@ const STATUS_STYLE: Record<OrderStatus, string> = {
 export default async function OrdersPage({
   searchParams,
 }: Props): Promise<ReactNode> {
-  const { db, profileId, owner } = await adminContext();
+  const { db, profileId } = await adminContext();
   const params = await searchParams;
   const status = ORDER_STATUSES.find((value) => value === params.status);
   const q = typeof params.q === "string" ? params.q : "";
   const page = Number(typeof params.page === "string" ? params.page : 1) || 1;
   const list = await listOrders(db, profileId, { status, query: q, page });
-  const payments = ownerPayments(owner);
+  const payments = ownerPayments();
 
   return (
     <div className="flex flex-col gap-4">
@@ -67,10 +67,7 @@ export default async function OrdersPage({
       />
       {payments.status.ready ? (
         <p className="text-xs text-muted-foreground">
-          {payments.status.account === "custom"
-            ? "Akun Midtrans Anda sendiri"
-            : "Midtrans platform"}
-          , mode{" "}
+          Midtrans, mode{" "}
           {payments.status.mode === "production"
             ? "production"
             : "sandbox (uji coba)"}

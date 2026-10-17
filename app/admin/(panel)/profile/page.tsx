@@ -34,7 +34,6 @@ export default async function ProfilePage(): Promise<ReactNode> {
       />
       <ProfileEditor
         preview={preview}
-        isPremium={owner.user.plan === "premium"}
         initial={{
           displayName: profile.displayName,
           bio: profile.bio,

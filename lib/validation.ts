@@ -11,14 +11,11 @@ import {
   DISCOUNT_CODE_TYPES,
   FONTS,
   LINK_LAYOUTS,
-  MIDTRANS_MODES,
   PRODUCT_STATUSES,
   PRODUCT_TYPES,
   PROFILE_THEMES,
   SOCIAL_PLATFORMS,
   THEME_PRESETS,
-  USER_PLANS,
-  USER_STATUSES,
   type AccentHex,
   type SocialPlatform,
 } from "@/lib/domain";
@@ -356,38 +353,10 @@ const whatsappNumberField = z
     value === null ? null : normalizeWhatsAppNumber(value)
   );
 
-/** Midtrans server keys: Mid-server-... (production) or SB-Mid-server-... (sandbox). */
-export const MIDTRANS_SERVER_KEY_PATTERN =
-  /^(?:SB-)?Mid-server-[A-Za-z0-9_-]{8,}$/;
-
 export const publicSettingsSchema = z.object({
   username: usernameSchema,
   whatsappNumber: whatsappNumberField,
   isPublished: z.boolean(),
-  midtransMode: z.enum(MIDTRANS_MODES).optional(),
-  /**
-   * A new server key for the member's own Midtrans account. Empty keeps the
-   * saved one; the saved key is never sent back to the browser. Sandbox or
-   * production follows from the key itself.
-   */
-  customMidtransServerKey: z
-    .string()
-    .trim()
-    .max(200, "Server key terlalu panjang.")
-    .nullable()
-    .optional()
-    .transform((value) => value || null)
-    .superRefine((value, ctx) => {
-      if (value === null || MIDTRANS_SERVER_KEY_PATTERN.test(value)) return;
-      ctx.addIssue({
-        code: "custom",
-        message: /Mid-client-/.test(value)
-          ? "Itu Client Key. Tempel Server Key (diawali Mid-server- atau SB-Mid-server-)."
-          : "Server key diawali Mid-server- (produksi) atau SB-Mid-server- (sandbox).",
-      });
-    }),
-  /** Deletes the saved key. */
-  removeCustomMidtransServerKey: z.boolean().optional(),
 });
 
 export type PublicSettingsInput = z.output<typeof publicSettingsSchema>;
@@ -586,67 +555,7 @@ export const passwordSchema = z
   .regex(/[a-zA-Z]/, "Harus mengandung huruf.")
   .regex(/[0-9]/, "Harus mengandung angka.");
 
-// ------------------------------------------------------------ super admin
-
-/** FormData "30" -> 30 days; "" -> null (no end date). */
-const planDurationField = z
-  .string()
-  .trim()
-  .nullable()
-  .optional()
-  .transform((value, ctx) => {
-    if (!value) return null;
-    const days = Number(value);
-    if (!Number.isInteger(days) || days < 1 || days > 3650) {
-      ctx.addIssue({ code: "custom", message: "Durasi tidak valid." });
-      return z.NEVER;
-    }
-    return days;
-  });
-
-const planNotesField = z
-  .string()
-  .trim()
-  .max(300, "Maksimal 300 karakter.")
-  .nullable()
-  .optional()
-  .transform((value) => value || undefined);
-
-export const createMemberSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Nama minimal 2 karakter.")
-    .max(60, "Maksimal 60 karakter."),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .max(120, "Maksimal 120 karakter.")
-    .pipe(z.email("Email tidak valid.")),
-  username: usernameSchema,
-  password: passwordSchema,
-  plan: z.enum(USER_PLANS),
-  durationDays: planDurationField,
-  notes: planNotesField,
-});
-
-export const memberPlanSchema = z.object({
-  userId: z.uuid("Member tidak ditemukan."),
-  plan: z.enum(USER_PLANS),
-  durationDays: planDurationField,
-  notes: planNotesField,
-});
-
-export const memberPasswordSchema = z.object({
-  userId: z.uuid("Member tidak ditemukan."),
-  newPassword: passwordSchema,
-});
-
-export const memberStatusSchema = z.object({
-  userId: z.uuid("Member tidak ditemukan."),
-  status: z.enum(USER_STATUSES),
-});
+// --------------------------------------------------------- site settings
 
 export const platformSettingsSchema = z.object({
   brandName: z

@@ -27,7 +27,7 @@ import {
 } from "@/server/checkout";
 import { scheduleOrderEmails } from "@/server/email";
 import { isPaymentOutcome, orderAccessQuery } from "@/server/order-access";
-import { gatewayForOrder } from "@/server/payments";
+import { getPaymentGateway } from "@/server/payments";
 import { getVisitorLook } from "@/server/profile";
 
 export const metadata: Metadata = {
@@ -83,7 +83,7 @@ export default async function OrderPage({
   const { product, delivery } = found;
 
   const gateway =
-    order.status === "pending" ? await gatewayForOrder(db, order) : null;
+    order.status === "pending" ? getPaymentGateway() : null;
   if (order.status === "pending" && gateway) {
     try {
       const status = await refreshOrderStatus(db, gateway, order);

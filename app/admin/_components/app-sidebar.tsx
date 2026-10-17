@@ -31,20 +31,18 @@ import {
 } from "@/components/ui/sidebar";
 
 import { logoutAction } from "../_actions/auth";
-import { activeNavItem, getNavGroups } from "./nav-items";
+import { activeNavItem, NAV_GROUPS } from "./nav-items";
 
 export type SidebarOwner = {
   name: string;
   email: string;
   username: string;
-  role?: string;
-  plan?: string;
 };
 
 export function AppSidebar({ owner }: { owner: SidebarOwner }): ReactNode {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
-  const navGroups = getNavGroups(owner.role);
+  const navGroups = NAV_GROUPS;
   const activeUrl = activeNavItem(
     pathname,
     navGroups.flatMap((group) => group.items)

@@ -14,7 +14,7 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-// Profile fonts a premium owner can pick (FONTS in lib/domain.ts). Not
+// Profile fonts the owner can pick (FONTS in lib/domain.ts). Not
 // preloaded: a browser downloads one only when a page renders with it.
 const inter = Inter({
   variable: "--font-inter",

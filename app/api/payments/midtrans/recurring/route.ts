@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { handleMidtransRecurringNotification } from "@/server/checkout";
 import { scheduleOrderEmails } from "@/server/email";
-import { gatewayForOrder, getPaymentGateway } from "@/server/payments";
+import { getPaymentGateway } from "@/server/payments";
 
 /**
  * Midtrans "Recurring payment notification URL". The site has no
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const db = getDb();
     const result = await handleMidtransRecurringNotification(
       db,
-      (order) => (order ? gatewayForOrder(db, order) : getPaymentGateway()),
+      () => getPaymentGateway(),
       body
     );
     console.info("[midtrans] recurring notification", result.result);

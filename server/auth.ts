@@ -2,7 +2,6 @@ import { and, count, eq, gt, lt, ne } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
 import { authAttempts, profiles, sessions, users } from "@/db/schema";
-import { effectivePlan } from "@/lib/plan";
 import {
   getDummyPasswordHash,
   hashPassword,
@@ -73,7 +72,7 @@ export async function signIn(
     user?.passwordHash ?? (await getDummyPasswordHash())
   );
 
-  if (!user || !valid || user.status === "suspended") {
+  if (!user || !valid) {
     await db.insert(authAttempts).values(
       identifiers.map((identifier) => ({
         identifier,
@@ -119,10 +118,6 @@ export type SessionOwner = {
     id: string;
     email: string;
     name: string;
-    role: "super_admin" | "member";
-    plan: "free" | "premium";
-    planExpiresAt: Date | null;
-    status: "active" | "suspended";
   };
   profile: typeof profiles.$inferSelect;
 };
@@ -142,10 +137,6 @@ export async function resolveSession(
       userId: users.id,
       email: users.email,
       name: users.name,
-      role: users.role,
-      plan: users.plan,
-      planExpiresAt: users.planExpiresAt,
-      status: users.status,
     })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
@@ -153,7 +144,7 @@ export async function resolveSession(
     .limit(1);
 
   if (!row) return null;
-  if (row.expiresAt.getTime() <= nowMs || row.status === "suspended") {
+  if (row.expiresAt.getTime() <= nowMs) {
     await db.delete(sessions).where(eq(sessions.id, sessionId));
     return null;
   }
@@ -169,11 +160,6 @@ export async function resolveSession(
       id: row.userId,
       email: row.email,
       name: row.name,
-      role: row.role,
-      // The plan in force now: expired premium is free, the super admin is premium.
-      plan: effectivePlan(row, nowMs),
-      planExpiresAt: row.planExpiresAt,
-      status: row.status,
     },
     profile,
   };

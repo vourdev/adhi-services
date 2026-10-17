@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { handleMidtransNotification } from "@/server/checkout";
 import { scheduleOrderEmails } from "@/server/email";
-import { gatewayForOrder, getPaymentGateway } from "@/server/payments";
+import { getPaymentGateway } from "@/server/payments";
 
 /**
  * Midtrans payment notification (webhook). Every order asks Midtrans to
@@ -21,10 +21,9 @@ export async function POST(request: Request) {
 
   try {
     const db = getDb();
-    // Each order is verified with the key of the account it was paid into.
     const result = await handleMidtransNotification(
       db,
-      (order) => (order ? gatewayForOrder(db, order) : getPaymentGateway()),
+      () => getPaymentGateway(),
       body
     );
     if (result.httpStatus !== 200)

@@ -59,7 +59,6 @@ browser.
 | `DATABASE_AUTH_TOKEN`    | with Turso            | Turso auth token.                                                                                                                                                                                                                         |
 | `SITE_URL`               | production            | Public origin, e.g. `https://adhinugroho.id`. Canonical URLs, Open Graph, sitemap, WhatsApp product links, Midtrans finish redirect. Without a public https value: `robots.txt` blocks indexing and direct checkout is off in production. |
 | `AUTH_SECRET`            | production            | 32+ random characters. Signs download links. `openssl rand -base64 36`                                                                                                                                                                    |
-| `ENCRYPTION_KEY`         | for members' Midtrans | 32+ random characters (`openssl rand -base64 36`). Encrypts the Midtrans server keys premium members save in Settings. Without it they cannot save one. Never change it once keys are stored: they could no longer be read.               |
 | `STORAGE_DIR`            | no                    | `./storage` by default (uploaded images and private product files).                                                                                                                                                                       |
 | `MIDTRANS_SERVER_KEY`    | for direct checkout   | Midtrans server key (`SB-Mid-server-...` for sandbox).                                                                                                                                                                                    |
 | `MIDTRANS_IS_PRODUCTION` | no                    | `true` for live transactions. Anything else means sandbox.                                                                                                                                                                                |
@@ -94,12 +93,6 @@ browser.
      needs the dashboard. If another shop shares the Midtrans account, its
      orders follow the dashboard values: changing them moves its redirects and
      notifications here (they are acknowledged and ignored).
-
-   - Premium members can take payments on their own Midtrans account
-     (Settings → "Akun Midtrans"). Set `ENCRYPTION_KEY` first. Their orders
-     send notifications to the same URL per transaction, so they configure
-     nothing in their Midtrans dashboard, and every order is verified with
-     the key of the account it was paid into.
    - Set the merchant name in Midtrans (Snap currently shows "Order Store").
    - Test in sandbox, then switch to production keys and
      `MIDTRANS_IS_PRODUCTION=true`. Production keys need an approved Midtrans
@@ -300,7 +293,7 @@ Two supported shapes:
      the Production and Preview environments. They set `TURSO_DATABASE_URL`,
      `TURSO_AUTH_TOKEN` and `BLOB_READ_WRITE_TOKEN` (or `BLOB_STORE_ID`);
      local development keeps using `data/` and `storage/`.
-  2. Set `SITE_URL`, `AUTH_SECRET`, `ENCRYPTION_KEY` and, for direct
+  2. Set `SITE_URL`, `AUTH_SECRET` and, for direct
      checkout, `MIDTRANS_SERVER_KEY` / `MIDTRANS_IS_PRODUCTION`.
   3. Deploy. Production builds run `npm run vercel-build`, which applies
      database migrations first; preview builds never touch the schema.

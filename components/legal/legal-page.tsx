@@ -11,7 +11,7 @@ export const LEGAL_LINKS = [
   { href: "/privasi", label: "Privasi" },
 ] as const;
 
-/** The business behind the platform, as the super admin entered it. Empty fields are null. */
+/** The business behind the platform, as the owner entered it in Settings. Empty fields are null. */
 export type BusinessContact = {
   name: string;
   email: string | null;

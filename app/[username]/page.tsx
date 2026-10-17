@@ -10,7 +10,7 @@ import { getDb } from "@/db/client";
 import { lookFromProfile } from "@/lib/profile-look";
 import { normalizeUsername } from "@/lib/validation";
 import { loadProfile } from "@/server/public-data";
-import { getPlatformSettings } from "@/server/super-admin";
+import { getPlatformSettings } from "@/server/platform-settings";
 
 type Props = { params: Promise<{ username: string }> };
 

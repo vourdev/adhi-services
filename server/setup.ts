@@ -48,8 +48,6 @@ export type OwnerInput = {
   password: string;
   name: string;
   username: string;
-  role?: "super_admin" | "member";
-  plan?: "free" | "premium";
 };
 
 export async function hasOwner(db: Database): Promise<boolean> {
@@ -70,9 +68,6 @@ export async function createOwner(
         email: input.email.toLowerCase(),
         name: input.name,
         passwordHash,
-        // Only the first-run setup creates the super admin, and it says so explicitly.
-        role: input.role ?? "member",
-        plan: input.plan ?? "free",
       })
       .returning();
     if (!user) throw new Error("Owner insert failed");

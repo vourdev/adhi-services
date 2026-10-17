@@ -10,19 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  blobStorageEnabled,
-  encryptionSecret,
-  hasPublicSiteUrl,
-  siteUrl,
-  storageDir,
-} from "@/lib/env";
+import { blobStorageEnabled, hasPublicSiteUrl, siteUrl, storageDir } from "@/lib/env";
 import { adminContext, ownerPayments } from "@/server/admin";
 import { IGNORE_COOKIE } from "@/server/analytics/visitor";
 import { countActiveSessions } from "@/server/auth";
-import { paymentsStatus, savedServerKeyHint } from "@/server/payments";
+import { getPlatformSettings } from "@/server/platform-settings";
 
 import { PageHeader } from "../../_components/page-header";
+import { BrandForm } from "./_components/brand-form";
 import { MidtransDashboardUrls } from "./_components/midtrans-urls";
 import { PublicSettingsForm } from "./_components/public-settings-form";
 import {
@@ -35,20 +30,13 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage(): Promise<ReactNode> {
   const { db, owner } = await adminContext();
-  const [sessions, cookieStore] = await Promise.all([
+  const [sessions, cookieStore, platform] = await Promise.all([
     countActiveSessions(db, owner.user.id),
     cookies(),
+    getPlatformSettings(db),
   ]);
-  const isSuperAdmin = owner.user.role === "super_admin";
-  const { status: payments, problem } = ownerPayments(owner);
+  const { status: payments, problem } = ownerPayments();
   const { profile } = owner;
-  // Only a hint of the saved key leaves the server, never the key itself.
-  const savedKey = profile.customMidtransServerKey
-    ? {
-        hint: savedServerKeyHint(profile),
-        production: profile.customMidtransIsProduction,
-      }
-    : null;
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
@@ -67,12 +55,11 @@ export default async function SettingsPage(): Promise<ReactNode> {
             username={profile.username}
             whatsappNumber={profile.whatsappNumber ?? ""}
             isPublished={profile.isPublished}
-            midtransMode={profile.midtransMode}
-            premium={owner.user.plan === "premium"}
-            savedKey={savedKey}
           />
         </CardContent>
       </Card>
+
+      <BrandForm settings={platform} />
 
       <Card>
         <CardHeader>
@@ -111,13 +98,8 @@ export default async function SettingsPage(): Promise<ReactNode> {
             )}
           </CardTitle>
           <CardDescription>
-            {payments.ready
-              ? payments.account === "custom"
-                ? "Pembayaran pembeli masuk ke akun Midtrans Anda sendiri."
-                : "Pembayaran pembeli masuk ke akun Midtrans platform."
-              : payments.account === "custom"
-                ? "Diatur ke akun Midtrans Anda sendiri."
-                : "Diatur ke akun Midtrans platform."}
+            Kunci Midtrans disimpan di environment server (MIDTRANS_SERVER_KEY),
+            tidak bisa diubah dari dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
@@ -132,16 +114,12 @@ export default async function SettingsPage(): Promise<ReactNode> {
           ) : (
             <p className="text-muted-foreground">{problem}</p>
           )}
-          {/* Members on the platform account have no Midtrans dashboard of their own. */}
-          {payments.account === "custom" && !isSuperAdmin ? (
-            <div className="border-t pt-3">
-              <MidtransDashboardUrls
-                siteUrl={siteUrl()}
-                publicSite={hasPublicSiteUrl()}
-              />
-            </div>
-          ) : null}
-          {isSuperAdmin ? <PlatformPaymentsAdmin /> : null}
+          <div className="border-t pt-3">
+            <MidtransDashboardUrls
+              siteUrl={siteUrl()}
+              publicSite={hasPublicSiteUrl()}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -156,58 +134,11 @@ export default async function SettingsPage(): Promise<ReactNode> {
         </CardContent>
       </Card>
 
-      {isSuperAdmin ? (
-        <p className="text-xs text-muted-foreground">
-          {blobStorageEnabled()
-            ? "Penyimpanan file: Vercel Blob (store privat) untuk gambar dan file produk."
-            : `Penyimpanan file: ${storageDir()} (gambar publik dan file produk privat). Butuh disk persisten di server production, atau hubungkan Vercel Blob.`}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/** Server configuration for the platform account. Shown to the super admin only. */
-function PlatformPaymentsAdmin(): ReactNode {
-  const platform = paymentsStatus();
-  return (
-    <div className="flex flex-col gap-3 border-t pt-3">
-      <span className="text-xs font-medium text-muted-foreground">
-        Akun platform (hanya terlihat oleh Super Admin)
-      </span>
-      {platform.ready ? (
-        <p className="text-xs text-muted-foreground">
-          Kunci platform aktif ({platform.mode}). Kunci API platform disimpan di
-          environment server, tidak bisa diubah dari dashboard.
-        </p>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Isi{" "}
-          {platform.missing.map((name) => (
-            <code
-              key={name}
-              className="mx-0.5 rounded bg-muted px-1 py-0.5 text-xs"
-            >
-              {name}
-            </code>
-          ))}{" "}
-          di environment server, lalu deploy ulang. Lihat README bagian
-          &quot;Pembayaran&quot;.
-        </p>
-      )}
-      {!encryptionSecret() ? (
-        <p className="text-xs text-muted-foreground">
-          <code className="rounded bg-muted px-1 py-0.5 text-xs">
-            ENCRYPTION_KEY
-          </code>{" "}
-          belum diatur, jadi member Premium belum bisa menyimpan Server Key
-          Midtrans mereka sendiri.
-        </p>
-      ) : null}
-      <MidtransDashboardUrls
-        siteUrl={siteUrl()}
-        publicSite={hasPublicSiteUrl()}
-      />
+      <p className="text-xs text-muted-foreground">
+        {blobStorageEnabled()
+          ? "Penyimpanan file: Vercel Blob (store privat) untuk gambar dan file produk."
+          : `Penyimpanan file: ${storageDir()} (gambar publik dan file produk privat). Butuh disk persisten di server production, atau hubungkan Vercel Blob.`}
+      </p>
     </div>
   );
 }

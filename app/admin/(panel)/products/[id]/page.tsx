@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { parseRange } from "@/lib/analytics/range";
 import { blobStorageEnabled, siteUrl } from "@/lib/env";
 import { formatNumber, formatRupiah } from "@/lib/format";
-import { visitorLook } from "@/lib/profile-look";
+import { lookFromProfile } from "@/lib/profile-look";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 import { adminContext, ownerPayments } from "@/server/admin";
 import { getProductAnalytics } from "@/server/analytics/queries";
@@ -37,7 +37,7 @@ export default async function EditProductPage({
     getProductAnalytics(db, profileId, parseRange({ range: "30d" })),
   ]);
   const stats = analytics.rows.find((row) => row.productId === id);
-  const payments = ownerPayments(owner);
+  const payments = ownerPayments();
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,7 +81,7 @@ export default async function EditProductPage({
         initialValues={toFormValues(product, onProfile)}
         username={owner.profile.username}
         siteUrl={siteUrl()}
-        profileLook={visitorLook(owner.profile, owner.user.plan === "premium")}
+        profileLook={lookFromProfile(owner.profile)}
         profileWhatsappSet={Boolean(
           owner.profile.whatsappNumber &&
           isValidWhatsAppNumber(owner.profile.whatsappNumber)

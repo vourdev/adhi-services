@@ -4,15 +4,6 @@
  * and in tests.
  */
 
-export const USER_ROLES = ["super_admin", "member"] as const;
-export type UserRole = (typeof USER_ROLES)[number];
-
-export const USER_PLANS = ["free", "premium"] as const;
-export type UserPlan = (typeof USER_PLANS)[number];
-
-export const USER_STATUSES = ["active", "suspended"] as const;
-export type UserStatus = (typeof USER_STATUSES)[number];
-
 export const THEME_PRESETS = [
   "default",
   "minimal",

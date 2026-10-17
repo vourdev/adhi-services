@@ -6,7 +6,6 @@ import {
   products,
   profileLinks,
   profiles,
-  users,
 } from "@/db/schema";
 import {
   classifySource,
@@ -100,15 +99,12 @@ export async function ingestClientEvent(
     .select({
       id: profiles.id,
       isPublished: profiles.isPublished,
-      ownerStatus: users.status,
     })
     .from(profiles)
-    .innerJoin(users, eq(users.id, profiles.ownerId))
     .where(eq(profiles.id, input.profileId))
     .limit(1);
   if (!profile) return { recorded: false, reason: "unknown_target" };
-  // A suspended owner's page is offline, so it has no visits to count.
-  if (!profile.isPublished || profile.ownerStatus !== "active")
+  if (!profile.isPublished)
     return { recorded: false, reason: "unpublished" };
 
   let productId: string | null = null;
@@ -250,16 +246,12 @@ export async function findTrackableLink(db: Database, linkId: string) {
       username: profiles.username,
       isPublished: profiles.isPublished,
       whatsappNumber: profiles.whatsappNumber,
-      ownerStatus: users.status,
     })
     .from(profileLinks)
     .innerJoin(profiles, eq(profiles.id, profileLinks.profileId))
-    .innerJoin(users, eq(users.id, profiles.ownerId))
     .where(eq(profileLinks.id, linkId))
     .limit(1);
-  if (!row) return null;
-  const { ownerStatus, ...link } = row;
-  return { ...link, isPublished: link.isPublished && ownerStatus === "active" };
+  return row ?? null;
 }
 
 /** Same as findTrackableLink, for product cards. */
@@ -270,17 +262,10 @@ export async function findTrackableProduct(db: Database, productId: string) {
       username: profiles.username,
       isPublished: profiles.isPublished,
       profile: profiles,
-      ownerStatus: users.status,
     })
     .from(products)
     .innerJoin(profiles, eq(profiles.id, products.profileId))
-    .innerJoin(users, eq(users.id, profiles.ownerId))
     .where(eq(products.id, productId))
     .limit(1);
-  if (!row) return null;
-  const { ownerStatus, ...found } = row;
-  return {
-    ...found,
-    isPublished: found.isPublished && ownerStatus === "active",
-  };
+  return row ?? null;
 }

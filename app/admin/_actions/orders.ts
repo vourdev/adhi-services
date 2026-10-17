@@ -10,7 +10,7 @@ import { fail, ok, type Result } from "@/lib/result";
 import { adminContext } from "@/server/admin";
 import { refreshOrderStatus, rotateOrderAccess } from "@/server/checkout";
 import { scheduleOrderEmails } from "@/server/email";
-import { gatewayForOrder } from "@/server/payments";
+import { getPaymentGateway } from "@/server/payments";
 
 const idSchema = z.uuid();
 
@@ -35,7 +35,7 @@ export async function refreshOrderAction(
     where: and(eq(orders.id, orderId.data), eq(orders.profileId, profileId)),
   });
   if (!order) return fail("Pesanan tidak ditemukan.");
-  const gateway = await gatewayForOrder(db, order);
+  const gateway = getPaymentGateway();
   if (!gateway) return fail("Akun Midtrans pesanan ini belum bisa dihubungi.");
   try {
     const status = await refreshOrderStatus(db, gateway, order);

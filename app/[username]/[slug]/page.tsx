@@ -29,7 +29,7 @@ import { PRODUCT_TYPE_LABELS } from "@/lib/domain";
 import { lookFromProfile } from "@/lib/profile-look";
 import { hasUsableCodes } from "@/server/discount-codes";
 import { loadProduct } from "@/server/public-data";
-import { getPlatformSettings } from "@/server/super-admin";
+import { getPlatformSettings } from "@/server/platform-settings";
 
 type Props = { params: Promise<{ username: string; slug: string }> };
 

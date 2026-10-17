@@ -6,11 +6,8 @@ import {
   Package,
   ReceiptText,
   Settings,
-  ShieldCheck,
-  Sliders,
   TicketPercent,
   UserRound,
-  Users,
 } from "lucide-react";
 
 export type NavItem = {
@@ -19,39 +16,6 @@ export type NavItem = {
   icon: LucideIcon;
   description: string;
 };
-
-export const SUPER_ADMIN_GROUP: { label: string; items: NavItem[] } = {
-  label: "Super Admin",
-  items: [
-    {
-      title: "Master Control",
-      url: "/admin/super",
-      icon: ShieldCheck,
-      description: "Ringkasan sistem dan performa SaaS",
-    },
-    {
-      title: "Kelola Member",
-      url: "/admin/super/members",
-      icon: Users,
-      description: "Daftar pengguna & aktivasi premium",
-    },
-    {
-      title: "Brand Platform",
-      url: "/admin/super/settings",
-      icon: Sliders,
-      description: "Nama brand & identitas platform",
-    },
-  ],
-};
-
-export function getNavGroups(
-  role?: string
-): Array<{ label: string; items: NavItem[] }> {
-  if (role === "super_admin") {
-    return [SUPER_ADMIN_GROUP, ...NAV_GROUPS];
-  }
-  return NAV_GROUPS;
-}
 
 export const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
@@ -127,9 +91,8 @@ export function matchesNavItem(pathname: string, url: string): boolean {
 }
 
 /**
- * The one item to highlight: the most specific match, so a page such as
- * /admin/super/members highlights "Kelola Member" and not also its parent
- * "Master Control".
+ * The one item to highlight: the most specific match, so a nested page
+ * highlights its own item and not also its parent.
  */
 export function activeNavItem(
   pathname: string,
@@ -149,6 +112,6 @@ export function activeNavItem(
 export function currentNavItem(pathname: string): NavItem | undefined {
   return activeNavItem(
     pathname,
-    [SUPER_ADMIN_GROUP, ...NAV_GROUPS].flatMap((group) => group.items)
+    NAV_GROUPS.flatMap((group) => group.items)
   );
 }

@@ -25,9 +25,6 @@ import {
   SOCIAL_PLATFORMS,
   THEME_PRESETS,
   TRAFFIC_SOURCES,
-  USER_PLANS,
-  USER_ROLES,
-  USER_STATUSES,
 } from "@/lib/domain";
 
 const id = () =>
@@ -48,17 +45,12 @@ const updatedAt = () =>
 
 // ---------------------------------------------------------------- accounts
 
+/** The site has one account: its owner. There is no sign-up. */
 export const users = sqliteTable("users", {
   id: id(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: USER_ROLES }).notNull().default("member"),
-  status: text("status", { enum: USER_STATUSES }).notNull().default("active"),
-  plan: text("plan", { enum: USER_PLANS }).notNull().default("free"),
-  planExpiresAt: integer("plan_expires_at", { mode: "timestamp_ms" }),
-  planNotes: text("plan_notes"),
-  planGrantedBy: text("plan_granted_by"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -123,15 +115,6 @@ export const profiles = sqliteTable(
     customFaviconUrl: text("custom_favicon_url"),
     ogImageUrl: text("og_image_url"),
     trackingPixels: text("tracking_pixels"),
-    midtransMode: text("midtrans_mode", { enum: MIDTRANS_MODES })
-      .notNull()
-      .default("platform"),
-    customMidtransServerKey: text("custom_midtrans_server_key"),
-    customMidtransIsProduction: integer("custom_midtrans_is_production", {
-      mode: "boolean",
-    })
-      .notNull()
-      .default(false),
     /** Default WhatsApp number for WhatsApp checkout and the services page. */
     whatsappNumber: text("whatsapp_number"),
     isPublished: integer("is_published", { mode: "boolean" })
@@ -486,25 +469,6 @@ export const platformSettings = sqliteTable("platform_settings", {
   updatedAt: updatedAt(),
 });
 
-export const membershipLogs = sqliteTable(
-  "membership_logs",
-  {
-    id: id(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    grantedBy: text("granted_by").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    plan: text("plan", { enum: USER_PLANS }).notNull(),
-    durationDays: integer("duration_days"),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
-    notes: text("notes"),
-    createdAt: createdAt(),
-  },
-  (t) => [index("membership_logs_user_idx").on(t.userId)]
-);
-
 export type User = typeof users.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type SocialLink = typeof socialLinks.$inferSelect;
@@ -517,4 +481,3 @@ export type DigitalDelivery = typeof digitalDeliveries.$inferSelect;
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;
 export type PlatformSettings = typeof platformSettings.$inferSelect;
-export type MembershipLog = typeof membershipLogs.$inferSelect;

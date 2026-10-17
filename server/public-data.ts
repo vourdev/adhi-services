@@ -7,7 +7,7 @@ import { getDb } from "@/db/client";
 import { profiles } from "@/db/schema";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 
-import { paymentsStatusForPublicProfile } from "./payments";
+import { paymentsStatus } from "./payments";
 import { getProductBySlug } from "./products";
 import { getPublicProfile, toPublicProduct } from "./profile";
 import { getCurrentOwner } from "./session";
@@ -42,13 +42,11 @@ export const loadProduct = cache(async (username: string, slug: string) => {
   });
   const number = product.whatsappNumber ?? owner?.whatsappNumber ?? null;
   const whatsappReady = Boolean(number && isValidWhatsAppNumber(number));
-  // Checkout follows the seller's Midtrans account, not the platform's alone.
-  const payments = await paymentsStatusForPublicProfile(db, loaded.profile.id);
 
   return {
     ...loaded,
     product: toPublicProduct(product),
     whatsappReady,
-    paymentsReady: payments?.ready ?? false,
+    paymentsReady: paymentsStatus().ready,
   };
 });

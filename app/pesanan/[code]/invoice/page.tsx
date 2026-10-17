@@ -14,7 +14,7 @@ import { formatDateTime, formatRupiah } from "@/lib/format";
 import { paymentMethodLabel } from "@/lib/payment-methods";
 import { findOrderForBuyer } from "@/server/checkout";
 import { orderAccessQuery } from "@/server/order-access";
-import { getPlatformSettings } from "@/server/super-admin";
+import { getPlatformSettings } from "@/server/platform-settings";
 
 import { PrintButton } from "./print-button";
 

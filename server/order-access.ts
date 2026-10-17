@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import type { Database } from "@/db/client";
-import { orders, profiles, users } from "@/db/schema";
+import { orders, profiles } from "@/db/schema";
 import { hmacSha256, isOrderCode, safeEqual, sha256 } from "@/lib/security";
 
 /**
@@ -232,14 +232,12 @@ export async function orderSeller(db: Database, code: string) {
       username: profiles.username,
       displayName: profiles.displayName,
       isPublished: profiles.isPublished,
-      ownerStatus: users.status,
     })
     .from(orders)
     .innerJoin(profiles, eq(profiles.id, orders.profileId))
-    .innerJoin(users, eq(users.id, profiles.ownerId))
     .where(eq(orders.code, code))
     .limit(1);
-  return row?.isPublished && row.ownerStatus === "active"
+  return row?.isPublished
     ? {
         profileId: row.profileId,
         username: row.username,

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { blobStorageEnabled, siteUrl } from "@/lib/env";
-import { visitorLook } from "@/lib/profile-look";
+import { lookFromProfile } from "@/lib/profile-look";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 import { adminContext, ownerPayments } from "@/server/admin";
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Produk baru" };
 
 export default async function NewProductPage(): Promise<ReactNode> {
   const { owner } = await adminContext();
-  const payments = ownerPayments(owner);
+  const payments = ownerPayments();
   return (
     <div className="flex flex-col gap-4">
       <Button variant="ghost" size="sm" asChild className="w-fit">
@@ -35,7 +35,7 @@ export default async function NewProductPage(): Promise<ReactNode> {
         initialValues={NEW_PRODUCT}
         username={owner.profile.username}
         siteUrl={siteUrl()}
-        profileLook={visitorLook(owner.profile, owner.user.plan === "premium")}
+        profileLook={lookFromProfile(owner.profile)}
         profileWhatsappSet={Boolean(
           owner.profile.whatsappNumber &&
           isValidWhatsAppNumber(owner.profile.whatsappNumber)

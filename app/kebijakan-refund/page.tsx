@@ -9,7 +9,7 @@ import {
   LegalSection,
 } from "@/components/legal/legal-page";
 import { getDb } from "@/db/client";
-import { getPlatformSettings } from "@/server/super-admin";
+import { getPlatformSettings } from "@/server/platform-settings";
 
 export const metadata: Metadata = {
   title: "Kebijakan Refund",

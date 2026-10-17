@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Crown, Lock, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import type * as z from "zod";
 
 import { ProfileSurface, ProfileView } from "@/components/profile/profile-view";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,7 +32,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { type NamedPreset, PRESETS, visitorLook } from "@/lib/profile-look";
+import {
+  lookFromProfile,
+  type NamedPreset,
+  PRESETS,
+} from "@/lib/profile-look";
 import type { PublicProfile } from "@/lib/public-types";
 import { profileInputSchema } from "@/lib/validation";
 
@@ -52,12 +55,10 @@ type Values = z.input<typeof profileInputSchema>;
 export function ProfileEditor({
   initial,
   preview,
-  isPremium = false,
   children,
 }: {
   initial: Values;
   preview: PublicProfile;
-  isPremium?: boolean;
   /** Rendered under the form in the left column (the socials manager). */
   children?: ReactNode;
 }): ReactNode {
@@ -90,9 +91,7 @@ export function ProfileEditor({
     });
   }
 
-  // The preview renders exactly what visitors get: on free, the standard look.
-  const look = visitorLook(
-    {
+  const look = lookFromProfile({
       theme: values.theme,
       accent: values.accent,
       themePreset: values.themePreset,
@@ -100,9 +99,7 @@ export function ProfileEditor({
       fontFamily: values.fontFamily,
       cardShape: values.cardShape,
       cardStyle: values.cardStyle,
-    },
-    isPremium
-  );
+  });
   const fixedMode =
     look.preset === "custom" || PRESETS[look.preset].mode === "follow"
       ? null
@@ -290,37 +287,15 @@ export function ProfileEditor({
 
           <Card>
             <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-primary" />
-                    Kustomisasi Desain (Ultra-Customizer)
-                  </CardTitle>
-                  <CardDescription>
-                    Preset tema, font, bentuk, dan gaya kartu halaman profil.
-                  </CardDescription>
-                </div>
-                {isPremium ? (
-                  <Badge className="shrink-0 gap-1 bg-warning/10 text-warning">
-                    <Crown />
-                    Akses Premium
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="shrink-0 gap-1">
-                    <Lock />
-                    Premium
-                  </Badge>
-                )}
-              </div>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" />
+                Kustomisasi Desain (Ultra-Customizer)
+              </CardTitle>
+              <CardDescription>
+                Preset tema, font, bentuk, dan gaya kartu halaman profil.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {!isPremium ? (
-                <p className="mb-4 rounded-lg border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                  Fitur ini khusus paket Premium. Selama paket Anda Free, profil
-                  publik memakai tampilan standar. Hubungi admin platform untuk
-                  upgrade.
-                </p>
-              ) : null}
               <FieldGroup>
                 <FieldSet>
                   <FieldLegend variant="label">Preset tema</FieldLegend>
@@ -336,7 +311,6 @@ export function ProfileEditor({
                         value={field.value ?? "default"}
                         theme={look.theme}
                         onChange={choosePreset}
-                        disabled={!isPremium}
                       />
                     )}
                   />
@@ -351,7 +325,6 @@ export function ProfileEditor({
                       <FontPicker
                         value={field.value ?? "Plus Jakarta Sans"}
                         onChange={field.onChange}
-                        disabled={!isPremium}
                       />
                     )}
                   />
@@ -366,7 +339,6 @@ export function ProfileEditor({
                       <ShapePicker
                         value={field.value ?? "smooth"}
                         onChange={field.onChange}
-                        disabled={!isPremium}
                       />
                     )}
                   />
@@ -382,7 +354,6 @@ export function ProfileEditor({
                         value={field.value ?? "solid"}
                         look={look}
                         onChange={field.onChange}
-                        disabled={!isPremium}
                       />
                     )}
                   />
@@ -397,9 +368,7 @@ export function ProfileEditor({
                     render={({ field }) => (
                       <Switch
                         id="hideWatermark"
-                        // On free the watermark always shows, whatever was saved before.
-                        checked={isPremium && Boolean(field.value)}
-                        disabled={!isPremium}
+                        checked={Boolean(field.value)}
                         onCheckedChange={field.onChange}
                       />
                     )}
@@ -409,9 +378,8 @@ export function ProfileEditor({
                       Sembunyikan watermark platform
                     </FieldLabel>
                     <FieldDescription className="text-xs">
-                      {isPremium
-                        ? "Hapus watermark platform di bagian footer profil publik."
-                        : "Tersedia khusus untuk Member Premium."}
+                      Hapus tulisan &quot;Dibuat dengan&quot; di footer profil
+                      publik.
                     </FieldDescription>
                   </div>
                 </Field>

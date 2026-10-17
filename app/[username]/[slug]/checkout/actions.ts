@@ -1,11 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getDb } from "@/db/client";
-import { products } from "@/db/schema";
 import { isProduction, siteUrl } from "@/lib/env";
 import { checkoutInputSchema, fieldErrors } from "@/lib/validation";
 import { readVisitorFromHeaders } from "@/server/analytics/visitor";
@@ -16,7 +14,7 @@ import {
   RECENT_ORDERS_COOKIE,
   RECENT_ORDERS_MAX_AGE_S,
 } from "@/server/order-access";
-import { checkoutGatewayForProfile } from "@/server/payments";
+import { checkoutGateway } from "@/server/payments";
 import { allowAttempt } from "@/server/rate-limit";
 import { clientKey } from "@/server/session";
 
@@ -46,14 +44,7 @@ export async function checkoutAction(
     };
 
   const db = getDb();
-  // The seller's settings decide which Midtrans account this order is paid into.
-  const product = await db.query.products.findFirst({
-    where: eq(products.id, parsed.data.productId),
-    columns: { profileId: true },
-  });
-  const route = product
-    ? await checkoutGatewayForProfile(db, product.profileId)
-    : null;
+  const route = checkoutGateway();
   if (!route) return { error: "Pembayaran online belum tersedia." };
 
   const key = (await clientKey()) ?? "unknown";
@@ -71,7 +62,6 @@ export async function checkoutAction(
   const result = await startCheckout(db, route.gateway, parsed.data, {
     siteUrl: siteUrl(),
     visitor: await readVisitorFromHeaders(),
-    paymentAccount: route.account,
     notificationUrl: route.notificationUrl,
   });
   if (!result.ok) return { error: result.error };

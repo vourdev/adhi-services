@@ -6,16 +6,10 @@ import {
   profileLinks,
   profiles,
   socialLinks,
-  users,
   type Product,
 } from "@/db/schema";
 import { linkIconFor } from "@/lib/link-icon";
-import {
-  FREE_PROFILE_LOOK,
-  hasPremium,
-  withoutPremiumFields,
-} from "@/lib/plan";
-import { type ProfileLook, visitorLook } from "@/lib/profile-look";
+import { lookFromProfile, type ProfileLook } from "@/lib/profile-look";
 import type {
   PublicBlock,
   PublicProduct,
@@ -31,8 +25,6 @@ import type {
   SocialInput,
 } from "@/lib/validation";
 
-import { isProductionKey, sealServerKey } from "./payments/accounts";
-
 /**
  * Profile, link and social-link data access. Every admin function takes the
  * owner's profileId from the session and includes it in the WHERE clause, so
@@ -44,26 +36,12 @@ import { isProductionKey, sealServerKey } from "./payments/accounts";
 export async function getPublicProfile(
   db: Database,
   username: string,
-  options: { includeUnpublished?: boolean } = {},
-  nowMs = Date.now()
+  options: { includeUnpublished?: boolean } = {}
 ): Promise<PublicProfile | null> {
-  const [row] = await db
-    .select({
-      profile: profiles,
-      owner: {
-        role: users.role,
-        plan: users.plan,
-        planExpiresAt: users.planExpiresAt,
-        status: users.status,
-      },
-    })
-    .from(profiles)
-    .innerJoin(users, eq(users.id, profiles.ownerId))
-    .where(eq(profiles.username, username))
-    .limit(1);
-  // A suspended owner's pages are offline for everyone, previews included.
-  if (!row || row.owner.status !== "active") return null;
-  const { profile } = row;
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.username, username),
+  });
+  if (!profile) return null;
   if (!profile.isPublished && !options.includeUnpublished) return null;
 
   const [socials, rows] = await Promise.all([
@@ -152,21 +130,17 @@ export async function getPublicProfile(
       (blocks[index + 1] !== undefined && blocks[index + 1]?.type !== "heading")
   );
 
-  // Premium styling shows only while the owner's plan is active. The stored
-  // values stay, so they come back when premium is renewed.
-  const look = hasPremium(row.owner, nowMs)
-    ? {
-        themePreset: profile.themePreset,
-        customTheme: profile.customTheme,
-        fontFamily: profile.fontFamily,
-        cardShape: profile.cardShape,
-        cardStyle: profile.cardStyle,
-        hideWatermark: Boolean(profile.hideWatermark),
-        customFaviconUrl: profile.customFaviconUrl,
-        ogImageUrl: profile.ogImageUrl,
-        trackingPixels: profile.trackingPixels,
-      }
-    : FREE_PROFILE_LOOK;
+  const look = {
+    themePreset: profile.themePreset,
+    customTheme: profile.customTheme,
+    fontFamily: profile.fontFamily,
+    cardShape: profile.cardShape,
+    cardStyle: profile.cardStyle,
+    hideWatermark: Boolean(profile.hideWatermark),
+    customFaviconUrl: profile.customFaviconUrl,
+    ogImageUrl: profile.ogImageUrl,
+    trackingPixels: profile.trackingPixels,
+  };
 
   return {
     id: profile.id,
@@ -183,29 +157,15 @@ export async function getPublicProfile(
   };
 }
 
-/**
- * A profile's look as visitors see it, for pages that do not load the whole
- * profile (the order page): premium styling only while the plan is active.
- */
+/** A profile's look, for pages that do not load the whole profile (the order page). */
 export async function getVisitorLook(
   db: Database,
-  profileId: string,
-  nowMs = Date.now()
+  profileId: string
 ): Promise<ProfileLook | null> {
-  const [row] = await db
-    .select({
-      profile: profiles,
-      owner: {
-        role: users.role,
-        plan: users.plan,
-        planExpiresAt: users.planExpiresAt,
-      },
-    })
-    .from(profiles)
-    .innerJoin(users, eq(users.id, profiles.ownerId))
-    .where(eq(profiles.id, profileId))
-    .limit(1);
-  return row ? visitorLook(row.profile, hasPremium(row.owner, nowMs)) : null;
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, profileId),
+  });
+  return profile ? lookFromProfile(profile) : null;
 }
 
 function toProductCard(product: Product): PublicProductCard {
@@ -240,80 +200,22 @@ export async function getPrimaryProfile(db: Database) {
 
 // ------------------------------------------------------------------ admin
 
-/** Premium-only fields are dropped for a free owner, so the server enforces the plan, not the form. */
 export async function updateProfile(
   db: Database,
   profileId: string,
-  input: ProfileInput,
-  options: { premium: boolean }
+  input: ProfileInput
 ): Promise<Result> {
-  const values = options.premium ? input : withoutPremiumFields(input);
-  await db.update(profiles).set(values).where(eq(profiles.id, profileId));
+  await db.update(profiles).set(input).where(eq(profiles.id, profileId));
   return ok();
 }
 
-/**
- * Username, WhatsApp, visibility and the Midtrans account. Only premium may
- * switch to their own Midtrans account or change its key; a free owner can
- * always switch back to the platform account. A new key is stored encrypted
- * and never returned.
- */
+/** Username, WhatsApp number and visibility. */
 export async function updatePublicSettings(
   db: Database,
   profileId: string,
-  input: PublicSettingsInput,
-  options: { premium: boolean; encryptionSecret: string | null }
+  input: PublicSettingsInput
 ): Promise<Result<{ username: string }>> {
-  const current = await db.query.profiles.findFirst({
-    where: eq(profiles.id, profileId),
-    columns: { midtransMode: true, customMidtransServerKey: true },
-  });
-  if (!current) return fail("Profil tidak ditemukan.");
-
-  const {
-    midtransMode,
-    customMidtransServerKey: newKey,
-    removeCustomMidtransServerKey,
-    ...rest
-  } = input;
-  const values: Partial<typeof profiles.$inferInsert> = { ...rest };
-
-  if (options.premium) {
-    if (removeCustomMidtransServerKey) {
-      values.customMidtransServerKey = null;
-      values.customMidtransIsProduction = false;
-    } else if (newKey) {
-      if (!options.encryptionSecret) {
-        console.error(
-          "[settings] ENCRYPTION_KEY is not set; cannot store a Midtrans key"
-        );
-        return fail(
-          "Server belum siap menyimpan kunci Midtrans. Hubungi admin platform."
-        );
-      }
-      values.customMidtransServerKey = sealServerKey(
-        profileId,
-        newKey,
-        options.encryptionSecret
-      );
-      values.customMidtransIsProduction = isProductionKey(newKey);
-    }
-    if (midtransMode) values.midtransMode = midtransMode;
-    const keySaved =
-      values.customMidtransServerKey !== undefined
-        ? values.customMidtransServerKey !== null
-        : current.customMidtransServerKey !== null;
-    if (
-      (values.midtransMode ?? current.midtransMode) === "custom" &&
-      !keySaved
-    ) {
-      return fail("Isi Server Key Midtrans Anda untuk memakai akun sendiri.", {
-        customMidtransServerKey: "Server Key wajib diisi.",
-      });
-    }
-  } else if (midtransMode === "platform") {
-    values.midtransMode = "platform";
-  }
+  const values: Partial<typeof profiles.$inferInsert> = { ...input };
 
   try {
     await db.update(profiles).set(values).where(eq(profiles.id, profileId));
