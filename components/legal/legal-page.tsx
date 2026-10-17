@@ -48,7 +48,10 @@ export async function LegalPage({
 }): Promise<ReactNode> {
   const profile = await getPrimaryProfile(getDb());
   const body = (
-    <main className="mx-auto max-w-2xl px-5 py-12 text-[15px] leading-relaxed">
+    <main
+      id="konten"
+      className="mx-auto max-w-2xl px-5 py-12 text-[15px] leading-relaxed"
+    >
       <Link
         href="/"
         className="text-sm text-p-muted underline-offset-4 hover:underline"

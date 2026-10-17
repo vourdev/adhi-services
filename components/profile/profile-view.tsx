@@ -234,6 +234,15 @@ export function ProfileSurface({
       {...surfaceAttributes(look)}
       {...(page ? { "data-page-surface": "" } : {})}
     >
+      {page ? (
+        // First stop for keyboard users: past the header straight to the page's content.
+        <a
+          href="#konten"
+          className="sr-only z-50 rounded-[var(--p-r-btn)] bg-p-fg px-4 py-2.5 text-sm font-semibold text-p-bg focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        >
+          Langsung ke konten
+        </a>
+      ) : null}
       {children}
     </div>
   );

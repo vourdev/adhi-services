@@ -620,6 +620,27 @@
     text-size-adjust: 100%;
   }
 
+  /*
+   * Tailwind v4 leaves buttons on the default arrow. Everything clickable
+   * gets the hand, and disabled controls say so.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  input:is([type="checkbox"], [type="radio"], [type="file"]):not(:disabled),
+  label:has(> input:is([type="checkbox"], [type="radio"]):not(:disabled)) {
+    cursor: pointer;
+  }
+  :is(button, select, input, textarea):disabled {
+    cursor: not-allowed;
+  }
+
+  /* A focused element scrolled into view stays clear of the fixed order bar on phones. */
+  html:has([data-bottom-bar]) {
+    scroll-padding-bottom: 6.5rem;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);

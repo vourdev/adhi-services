@@ -17,7 +17,10 @@ export function BottomBar({
   children: ReactNode;
 }): ReactNode {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-10 border-t border-p-line bg-p-bg/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
+    <div
+      data-bottom-bar=""
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-p-line bg-p-bg/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
+    >
       <div className="mx-auto flex max-w-[34rem] items-center gap-4">
         {price ? (
           <div className="flex shrink-0 flex-col">
