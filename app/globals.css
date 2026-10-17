@@ -334,9 +334,10 @@
   background-size: 18px 18px;
 }
 
+/* Selected text and images: a light wash of the accent; the text keeps its colour. */
 .profile-surface ::selection {
-  background-color: var(--p-accent);
-  color: var(--p-accent-fg);
+  background-color: color-mix(in oklab, var(--p-accent) 20%, transparent);
+  color: inherit;
 }
 
 .profile-surface :focus-visible {
@@ -697,6 +698,15 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+  }
+
+  /*
+   * The dashboard's selection, instead of the system highlight (which can be
+   * a strong colour): a soft blue that keeps the text readable.
+   */
+  ::selection {
+    background-color: oklch(0.72 0.12 250 / 0.28);
+    color: inherit;
   }
 
   /*
