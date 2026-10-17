@@ -9,6 +9,7 @@ import { DEFAULT_WHATSAPP_TEMPLATE } from "@/lib/validation";
 import { isValidWhatsAppNumber } from "@/lib/whatsapp";
 
 import { addProductBlock, removeProductBlock } from "./profile";
+import { sanitizeRichText } from "./rich-text";
 import { privateFileExists } from "./storage";
 
 /**
@@ -68,6 +69,7 @@ function toRow(input: ProductInput) {
   const { showOnProfile: _showOnProfile, ...rest } = input;
   return {
     ...rest,
+    description: sanitizeRichText(input.description),
     whatsappTemplate: input.whatsappTemplate ?? null,
     deliveryFileKey:
       input.deliveryType === "file" ? input.deliveryFileKey : null,

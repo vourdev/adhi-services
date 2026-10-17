@@ -80,6 +80,7 @@ import {
   ImageField,
   uploadProductFile,
 } from "../../../_components/image-field";
+import { RichTextEditor } from "../../../_components/rich-text-editor";
 
 export type ProductFormValues = z.input<typeof productInputSchema>;
 type ProductOutput = z.output<typeof productInputSchema>;
@@ -266,15 +267,24 @@ export function ProductForm({
               </Field>
               <Field data-invalid={Boolean(errors.description) || undefined}>
                 <FieldLabel htmlFor="description">Deskripsi</FieldLabel>
-                <Textarea
-                  id="description"
-                  rows={6}
-                  maxLength={5000}
-                  placeholder="Jelaskan isi produk, untuk siapa, dan apa yang didapat pembeli."
-                  {...form.register("description")}
+                <Controller
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <RichTextEditor
+                      id="description"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      invalid={Boolean(errors.description)}
+                      placeholder="Jelaskan isi produk, untuk siapa, dan apa yang didapat pembeli."
+                    />
+                  )}
                 />
                 <FieldDescription>
-                  Baris baru dipertahankan di halaman produk.
+                  Pakai judul, daftar poin, dan teks tebal agar mudah dibaca.
+                  Tempel dari dokumen lain juga bisa; format yang tidak didukung
+                  dibuang saat disimpan.
                 </FieldDescription>
                 <FieldError>{errors.description?.message}</FieldError>
               </Field>

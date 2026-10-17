@@ -28,6 +28,7 @@ import { getDb } from "@/db/client";
 import { PRODUCT_TYPE_LABELS } from "@/lib/domain";
 import { lookFromProfile } from "@/lib/profile-look";
 import { describeLimits } from "@/lib/quantity";
+import { richTextToPlain } from "@/lib/rich-text";
 import { cartProducts, readCart } from "@/server/cart";
 import { hasUsableCodes } from "@/server/discount-codes";
 import { getPlatformSettings } from "@/server/platform-settings";
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${product.seoTitle ?? product.name} | ${profile.displayName}`;
   const description =
     product.seoDescription ??
-    (product.description.replace(/\s+/g, " ").slice(0, 155) ||
+    (richTextToPlain(product.description).slice(0, 155) ||
       `${product.name} oleh ${profile.displayName}.`);
   const path = `/${profile.username}/${product.slug}`;
   return {
@@ -295,7 +296,7 @@ export default async function ProductPage({
               <section aria-labelledby="deskripsi">
                 <h2
                   id="deskripsi"
-                  className="mb-2 text-[15px] font-semibold tracking-tight"
+                  className="mb-3 text-[17px] font-semibold tracking-tight"
                 >
                   Deskripsi
                 </h2>

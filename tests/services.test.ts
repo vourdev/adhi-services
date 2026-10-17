@@ -9,6 +9,7 @@ import {
   digitalDeliveries,
   orderItems,
   orders,
+  products,
   profileLinks,
   profiles,
   webhookEvents,
@@ -497,6 +498,24 @@ function productInput(overrides: Partial<ProductInput> = {}): ProductInput {
 }
 
 describe("products", () => {
+  test("the description is stored as cleaned HTML", async () => {
+    const created = await createProduct(
+      db,
+      profileId,
+      productInput({
+        description:
+          '<h2>Isi</h2><p onclick="x()">Aman<script>alert(1)</script></p>',
+      }),
+      { profileWhatsapp: null, paymentsReady: true }
+    );
+    assert.ok(created.ok);
+    const stored = await db.query.products.findFirst({
+      where: eq(products.id, created.ok ? created.data.id : ""),
+      columns: { description: true },
+    });
+    assert.equal(stored?.description, "<h2>Isi</h2><p>Aman</p>");
+  });
+
   test("direct checkout cannot be published until payments are configured", async () => {
     const result = await createProduct(db, profileId, productInput(), {
       profileWhatsapp: null,

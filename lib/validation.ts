@@ -21,6 +21,7 @@ import {
 } from "@/lib/domain";
 import { parseLocalWib } from "@/lib/pricing";
 import { MAX_LINE_QUANTITY } from "@/lib/quantity";
+import { richTextToPlain } from "@/lib/rich-text";
 import { isValidWhatsAppNumber, normalizeWhatsAppNumber } from "@/lib/whatsapp";
 
 // ------------------------------------------------------------------- URLs
@@ -382,10 +383,15 @@ export const productInputSchema = z
       .toLowerCase()
       .max(80, "Maksimal 80 karakter.")
       .regex(SLUG_PATTERN, "Slug hanya huruf kecil, angka, dan tanda hubung."),
+    /** HTML from the editor (sanitized when saved) or older plain text. */
     description: z
       .string()
       .trim()
-      .max(5000, "Maksimal 5000 karakter.")
+      .max(30000, "Deskripsi terlalu panjang.")
+      .refine(
+        (value) => richTextToPlain(value).length <= 5000,
+        "Maksimal 5000 karakter teks."
+      )
       .default(""),
     coverUrl: optionalImageUrl,
     priceAmount: z
