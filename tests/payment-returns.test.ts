@@ -102,7 +102,7 @@ before(async () => {
     db,
     gateway,
     {
-      productIds: [product.ok ? product.data.id : ""],
+      items: [{ productId: product.ok ? product.data.id : "", quantity: 1 }],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: 50000,
       discountCode: null,

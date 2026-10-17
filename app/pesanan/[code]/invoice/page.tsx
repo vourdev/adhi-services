@@ -154,7 +154,9 @@ export default async function InvoicePage({
               {lines.map((line) => (
                 <tr key={line.productId} className="border-b border-[#e3e6eb]">
                   <td className="py-3 pr-4 font-medium">{line.name}</td>
-                  <td className="py-3 text-right tabular-nums">1</td>
+                  <td className="py-3 text-right tabular-nums">
+                    {line.quantity}
+                  </td>
                   <td className="py-3 text-right tabular-nums">
                     {formatRupiah(line.listAmount)}
                   </td>

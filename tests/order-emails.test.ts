@@ -86,7 +86,7 @@ async function newOrder(buyerName = "Budi <b>") {
     db,
     gateway,
     {
-      productIds: [productId],
+      items: [{ productId: productId, quantity: 1 }],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: 50000,
       discountCode: null,

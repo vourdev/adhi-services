@@ -63,6 +63,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type ProfileLook, surfaceAttributes } from "@/lib/profile-look";
 import { PRODUCT_TYPE_LABELS, PRODUCT_TYPES } from "@/lib/domain";
 import { formatBytes, formatRupiah } from "@/lib/format";
+import { MAX_LINE_QUANTITY } from "@/lib/quantity";
 import {
   DEFAULT_WHATSAPP_TEMPLATE,
   productInputSchema,
@@ -132,6 +133,7 @@ export function ProductForm({
   const productUrl = `${siteUrl}/${username}/${values.slug || "slug-produk"}`;
 
   const price = typeof values.priceAmount === "number" ? values.priceAmount : 0;
+  const compareAt = values.compareAtAmount;
 
   const messagePreview = renderWhatsAppTemplate(
     values.whatsappTemplate || DEFAULT_WHATSAPP_TEMPLATE,
@@ -330,6 +332,46 @@ export function ProductForm({
                   .
                 </FieldDescription>
                 <FieldError>{errors.priceAmount?.message}</FieldError>
+              </Field>
+
+              <Field
+                data-invalid={Boolean(errors.compareAtAmount) || undefined}
+              >
+                <FieldLabel htmlFor="compareAt">
+                  Harga coret (opsional)
+                </FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="compareAtAmount"
+                  render={({ field }) => (
+                    <InputGroup>
+                      <InputGroupAddon>
+                        <InputGroupText>Rp</InputGroupText>
+                      </InputGroupAddon>
+                      <InputGroupInput
+                        id="compareAt"
+                        inputMode="numeric"
+                        placeholder="Kosongkan jika tidak sedang diskon"
+                        aria-invalid={Boolean(errors.compareAtAmount)}
+                        value={
+                          typeof field.value === "number"
+                            ? field.value.toLocaleString("id-ID")
+                            : ""
+                        }
+                        onChange={(event) =>
+                          field.onChange(digitsOnly(event.target.value))
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    </InputGroup>
+                  )}
+                />
+                <FieldDescription>
+                  {typeof compareAt === "number" && compareAt > price
+                    ? `Pembeli melihat ${formatRupiah(compareAt)} dicoret dan membayar ${formatRupiah(price)} (hemat ${Math.round(((compareAt - price) / compareAt) * 100)}%).`
+                    : "Harga sebelum diskon, ditampilkan dicoret di samping harga jual. Pembeli tetap membayar harga jual."}
+                </FieldDescription>
+                <FieldError>{errors.compareAtAmount?.message}</FieldError>
               </Field>
 
               <Field>
@@ -607,6 +649,68 @@ export function ProductForm({
                 />
                 <FieldError>{errors.ctaLabel?.message}</FieldError>
               </Field>
+
+              {method === "direct" ? (
+                <FieldSet>
+                  <FieldLegend variant="label">
+                    Jumlah per transaksi
+                  </FieldLegend>
+                  <FieldDescription>
+                    Berlaku di keranjang dan checkout. Kosongkan maksimal agar
+                    tidak dibatasi (sampai {MAX_LINE_QUANTITY}).
+                  </FieldDescription>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      data-invalid={Boolean(errors.minQuantity) || undefined}
+                    >
+                      <FieldLabel htmlFor="minQuantity">Minimal</FieldLabel>
+                      <Controller
+                        control={form.control}
+                        name="minQuantity"
+                        render={({ field }) => (
+                          <Input
+                            id="minQuantity"
+                            inputMode="numeric"
+                            placeholder="1"
+                            aria-invalid={Boolean(errors.minQuantity)}
+                            value={field.value ?? ""}
+                            onChange={(event) =>
+                              field.onChange(
+                                digitsOnly(event.target.value) ?? 1
+                              )
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
+                      />
+                      <FieldError>{errors.minQuantity?.message}</FieldError>
+                    </Field>
+                    <Field
+                      data-invalid={Boolean(errors.maxQuantity) || undefined}
+                    >
+                      <FieldLabel htmlFor="maxQuantity">Maksimal</FieldLabel>
+                      <Controller
+                        control={form.control}
+                        name="maxQuantity"
+                        render={({ field }) => (
+                          <Input
+                            id="maxQuantity"
+                            inputMode="numeric"
+                            placeholder="Tidak dibatasi"
+                            aria-invalid={Boolean(errors.maxQuantity)}
+                            value={field.value ?? ""}
+                            onChange={(event) =>
+                              field.onChange(digitsOnly(event.target.value))
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
+                      />
+                      <FieldError>{errors.maxQuantity?.message}</FieldError>
+                    </Field>
+                  </div>
+                </FieldSet>
+              ) : null}
             </FieldGroup>
           </CardContent>
         </Card>
@@ -737,6 +841,10 @@ export function ProductForm({
                     slug: values.slug ?? "",
                     name: values.name || "Nama produk",
                     priceAmount: price,
+                    compareAtAmount:
+                      typeof compareAt === "number" && compareAt > price
+                        ? compareAt
+                        : null,
                     coverUrl: values.coverUrl || null,
                     isFeatured: values.isFeatured ?? false,
                     productType: values.productType ?? "digital",

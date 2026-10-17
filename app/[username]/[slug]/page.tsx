@@ -27,6 +27,7 @@ import { WhatsAppOrder } from "@/components/profile/whatsapp-order";
 import { getDb } from "@/db/client";
 import { PRODUCT_TYPE_LABELS } from "@/lib/domain";
 import { lookFromProfile } from "@/lib/profile-look";
+import { describeLimits } from "@/lib/quantity";
 import { cartProducts, readCart } from "@/server/cart";
 import { hasUsableCodes } from "@/server/discount-codes";
 import { getPlatformSettings } from "@/server/platform-settings";
@@ -119,7 +120,7 @@ export default async function ProductPage({
   const { product, profile, isOwner, whatsappReady, paymentsReady } = loaded;
   const [platform, cart] = await Promise.all([
     getPlatformSettings(getDb()),
-    readCart().then((ids) => cartProducts(profile.id, ids)),
+    readCart().then((lines) => cartProducts(profile.id, lines)),
   ]);
   const sellerPath = `/${profile.username}`;
   const published = product.status === "published";
@@ -127,7 +128,7 @@ export default async function ProductPage({
     product.checkoutMethod === "whatsapp" && whatsappReady && published;
   const directOrder =
     product.checkoutMethod === "direct" && paymentsReady && published;
-  const inCart = cart.some((item) => item.id === product.id);
+  const inCart = cart.some((line) => line.product.id === product.id);
 
   const closed = (
     <p className="rounded-[var(--p-r-btn)] border border-p-line px-4 py-3.5 text-center text-sm text-p-muted">
@@ -142,6 +143,7 @@ export default async function ProductPage({
     <div className="flex gap-3">
       <AddToCartButton
         productId={product.id}
+        cartHref={`${sellerPath}/checkout`}
         inCart={inCart}
         className="h-13 w-14 rounded-[var(--p-r-btn)] border border-p-fg/80 text-p-fg"
       />
@@ -244,7 +246,17 @@ export default async function ProductPage({
               <h1 className="text-[1.625rem] leading-[1.2] font-bold tracking-tight text-balance lg:text-[2.125rem]">
                 {product.name}
               </h1>
-              <PriceTag amount={product.priceAmount} size="lg" />
+              <PriceTag
+                amount={product.priceAmount}
+                compareAt={product.compareAtAmount}
+                size="lg"
+              />
+              {product.checkoutMethod === "direct" &&
+              describeLimits(product.limits) ? (
+                <span className="text-[13px] text-p-muted">
+                  {describeLimits(product.limits)}
+                </span>
+              ) : null}
             </header>
 
             {whatsappOrder ? (

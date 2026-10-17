@@ -75,6 +75,11 @@ async function sendOnce(
   }
 }
 
+/** "Template" or "Template (x2)". */
+function lineName(line: { name: string; quantity: number }): string {
+  return line.quantity > 1 ? `${line.name} (x${line.quantity})` : line.name;
+}
+
 async function loadOrder(db: Database, orderId: string) {
   const [row] = await db
     .select({
@@ -98,7 +103,7 @@ async function loadOrder(db: Database, orderId: string) {
   return {
     ...row,
     lines,
-    productName: productSummary(lines.map((line) => line.name)),
+    productName: productSummary(lines.map(lineName)),
     hasDelivery: lines.some((line) => line.deliveryType !== "none"),
     brandName: settings?.brandName ?? "Adhi Web Services",
   };
@@ -228,7 +233,7 @@ export async function deliverOrderEmails(
               buyerName: order.buyerName,
               orderCode: order.code,
               products: loaded.lines.map((line) => ({
-                name: line.name,
+                name: lineName(line),
                 listAmount: line.listAmount,
               })),
               discountCode: order.discountCode,

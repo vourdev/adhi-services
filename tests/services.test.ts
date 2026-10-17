@@ -585,7 +585,7 @@ describe("direct checkout, webhook and delivery", () => {
 
   test("checkout creates a pending order and a payment, reusing it on double submit", async () => {
     const input = {
-      productIds: [productId],
+      items: [{ productId: productId, quantity: 1 }],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: 25000,
       discountCode: null,
@@ -893,7 +893,7 @@ describe("discount codes", () => {
       db,
       gateway,
       {
-        productIds: [productId],
+        items: [{ productId: productId, quantity: 1 }],
         idempotencyKey: crypto.randomUUID(),
         expectedAmount: 78000,
         discountCode: null,
@@ -1035,7 +1035,7 @@ describe("discount codes", () => {
     assert.ok(
       (
         await checkout({
-          productIds: [otherProductId],
+          items: [{ productId: otherProductId, quantity: 1 }],
           discountCode: "KHUSUS",
           expectedAmount: 70200,
         })
@@ -1264,12 +1264,19 @@ describe("cart orders", () => {
     return created.ok ? created.data.id : "";
   };
 
-  const checkout = (productIds: string[], extra: Partial<CheckoutInput>) =>
+  const checkout = (
+    productIds: string[],
+    extra: Partial<CheckoutInput>,
+    quantities: number[] = []
+  ) =>
     startCheckout(
       db,
       gateway,
       {
-        productIds,
+        items: productIds.map((productId, index) => ({
+          productId,
+          quantity: quantities[index] ?? 1,
+        })),
         idempotencyKey: crypto.randomUUID(),
         expectedAmount: 0,
         discountCode: null,
@@ -1371,6 +1378,42 @@ describe("cart orders", () => {
         expectedAmount: 30000,
       }),
       { ok: false, error: CODE_REJECTION_MESSAGES.wrong_product }
+    );
+  });
+
+  test("quantities multiply the price and reach the gateway as one line", async () => {
+    const result = await checkout([ebookId], { expectedAmount: 90000 }, [3]);
+    assert.ok(result.ok);
+    const code = result.ok ? result.data.orderCode : "";
+    assert.deepEqual(lines.get(code), [
+      { id: ebookId, name: "Template Portofolio (x3)", price: 90000 },
+    ]);
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.code, code),
+    });
+    const [item] = await db.query.orderItems.findMany({
+      where: eq(orderItems.orderId, order?.id ?? ""),
+    });
+    assert.equal(item?.quantity, 3);
+    assert.equal(item?.listAmount, 90000);
+  });
+
+  test("a product's maximum and minimum per order are enforced", async () => {
+    const onlyOne = await make({ priceAmount: 50000, maxQuantity: 1 });
+    assert.deepEqual(
+      await checkout([onlyOne], { expectedAmount: 100000 }, [2]),
+      {
+        ok: false,
+        error: "Maksimal 1 per transaksi untuk Template Portofolio.",
+      }
+    );
+    const atLeastTwo = await make({ priceAmount: 10000, minQuantity: 2 });
+    assert.equal(
+      (await checkout([atLeastTwo], { expectedAmount: 10000 }, [1])).ok,
+      false
+    );
+    assert.ok(
+      (await checkout([atLeastTwo], { expectedAmount: 20000 }, [2])).ok
     );
   });
 

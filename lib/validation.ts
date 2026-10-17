@@ -20,6 +20,7 @@ import {
   type SocialPlatform,
 } from "@/lib/domain";
 import { parseLocalWib } from "@/lib/pricing";
+import { MAX_LINE_QUANTITY } from "@/lib/quantity";
 import { isValidWhatsAppNumber, normalizeWhatsAppNumber } from "@/lib/whatsapp";
 
 // ------------------------------------------------------------------- URLs
@@ -392,12 +393,32 @@ export const productInputSchema = z
       .int("Harga harus bilangan bulat.")
       .min(0, "Harga tidak boleh negatif.")
       .max(MAX_PRICE, "Harga terlalu besar."),
+    compareAtAmount: z
+      .number()
+      .int("Harga harus bilangan bulat.")
+      .min(1, "Harga coret minimal Rp1.")
+      .max(MAX_PRICE, "Harga terlalu besar.")
+      .nullable()
+      .default(null),
     productType: z.enum(PRODUCT_TYPES),
     status: z.enum(PRODUCT_STATUSES),
     isFeatured: z.boolean().default(false),
     showOnProfile: z.boolean().default(true),
     checkoutMethod: z.enum(CHECKOUT_METHODS),
     ctaLabel: optionalText(32),
+    minQuantity: z
+      .number({ error: "Isi jumlah minimal." })
+      .int("Harus bilangan bulat.")
+      .min(1, "Minimal 1.")
+      .max(MAX_LINE_QUANTITY, `Maksimal ${MAX_LINE_QUANTITY}.`)
+      .default(1),
+    maxQuantity: z
+      .number()
+      .int("Harus bilangan bulat.")
+      .min(1, "Minimal 1.")
+      .max(MAX_LINE_QUANTITY, `Maksimal ${MAX_LINE_QUANTITY}.`)
+      .nullable()
+      .default(null),
     whatsappNumber: whatsappNumberField,
     whatsappTemplate: optionalText(1000),
     deliveryType: z.enum(DELIVERY_TYPES).default("none"),
@@ -424,6 +445,23 @@ export const productInputSchema = z
         code: "custom",
         path: ["priceAmount"],
         message: "Checkout langsung butuh harga minimal Rp1.",
+      });
+    }
+    if (
+      value.compareAtAmount !== null &&
+      value.compareAtAmount <= value.priceAmount
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["compareAtAmount"],
+        message: "Harga coret harus lebih tinggi dari harga jual.",
+      });
+    }
+    if (value.maxQuantity !== null && value.maxQuantity < value.minQuantity) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["maxQuantity"],
+        message: "Jumlah maksimal tidak boleh kurang dari jumlah minimal.",
       });
     }
     if (value.deliveryType === "link" && !value.deliveryUrl) {
@@ -600,11 +638,21 @@ export const changePasswordSchema = z
 export const MAX_CART_ITEMS = 20;
 
 export const checkoutInputSchema = z.object({
-  productIds: z
-    .array(z.uuid())
+  /** Each product once, with how many units; the limits are checked on the server. */
+  items: z
+    .array(
+      z.object({
+        productId: z.uuid(),
+        quantity: z.coerce.number().int().min(1).max(MAX_LINE_QUANTITY),
+      })
+    )
     .min(1, "Keranjang kosong.")
     .max(MAX_CART_ITEMS, `Maksimal ${MAX_CART_ITEMS} produk per pesanan.`)
-    .refine((ids) => new Set(ids).size === ids.length, "Produk ganda."),
+    .refine(
+      (items) =>
+        new Set(items.map((item) => item.productId)).size === items.length,
+      "Produk ganda."
+    ),
   idempotencyKey: z.uuid(),
   /** The total the buyer saw; checkout stops if it changed since (price edited, code ended). */
   expectedAmount: z.coerce.number().int().min(0),

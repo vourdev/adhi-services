@@ -65,7 +65,7 @@ export default async function ProfilePage({
 
   const [platform, cart] = await Promise.all([
     getPlatformSettings(getDb()),
-    readCart().then((ids) => cartProducts(profile.id, ids)),
+    readCart().then((lines) => cartProducts(profile.id, lines)),
   ]);
 
   return (

@@ -370,7 +370,7 @@ describe("discount code rules", () => {
 
   test("checkout reads the applied code case-insensitively, empty means none", () => {
     const input = {
-      productIds: [crypto.randomUUID()],
+      items: [{ productId: crypto.randomUUID(), quantity: 1 }],
       idempotencyKey: crypto.randomUUID(),
       expectedAmount: "70200",
       buyerName: "Sari",
@@ -401,8 +401,11 @@ describe("discount code rules", () => {
       buyerEmail: "sari@example.id",
     };
     const id = crypto.randomUUID();
-    const parse = (productIds: string[]) =>
-      checkoutInputSchema.safeParse({ ...base, productIds }).success;
+    const parse = (productIds: string[], quantity = 1) =>
+      checkoutInputSchema.safeParse({
+        ...base,
+        items: productIds.map((productId) => ({ productId, quantity })),
+      }).success;
     assert.equal(parse([]), false);
     assert.equal(parse([id, id]), false);
     assert.equal(
@@ -410,5 +413,33 @@ describe("discount code rules", () => {
       false
     );
     assert.equal(parse([id, crypto.randomUUID()]), true);
+    assert.equal(parse([id], 0), false, "at least one unit");
+    assert.equal(parse([id], 100), false, "at most 99 units");
+  });
+});
+
+describe("product sale price and quantity limits", () => {
+  const product = (overrides: Record<string, unknown>) =>
+    productInputSchema.safeParse({
+      name: "Template",
+      slug: "template",
+      priceAmount: 1000000,
+      productType: "template",
+      status: "draft",
+      checkoutMethod: "direct",
+      ...overrides,
+    });
+
+  test("the struck-through price must be higher than the price", () => {
+    assert.equal(product({ compareAtAmount: 2500000 }).success, true);
+    assert.equal(product({ compareAtAmount: 1000000 }).success, false);
+    assert.equal(product({ compareAtAmount: 900000 }).success, false);
+    assert.equal(product({ compareAtAmount: null }).success, true);
+  });
+
+  test("the maximum per order cannot be below the minimum", () => {
+    assert.equal(product({ minQuantity: 2, maxQuantity: 5 }).success, true);
+    assert.equal(product({ minQuantity: 3, maxQuantity: 2 }).success, false);
+    assert.equal(product({ minQuantity: 1, maxQuantity: null }).success, true);
   });
 });

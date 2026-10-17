@@ -25,6 +25,7 @@ import {
 } from "@/db/schema";
 import type { OrderStatus } from "@/lib/domain";
 import { priceCart } from "@/lib/pricing";
+import { quantityLimits, quantityProblem } from "@/lib/quantity";
 import { fail, isUniqueViolation, ok, type Result } from "@/lib/result";
 import {
   generateOrderCode,
@@ -99,7 +100,7 @@ export async function startCheckout(
     accessToken: string | null;
   }>
 > {
-  const ids = input.productIds;
+  const ids = input.items.map((item) => item.productId);
   const rows = await db
     .select({ product: products, profilePublished: profiles.isPublished })
     .from(products)
@@ -129,6 +130,15 @@ export async function startCheckout(
   const items = ids.map((id) => byId.get(id)!.product);
   if (items.some((product) => product.checkoutMethod !== "direct"))
     return fail("Produk ini dipesan lewat WhatsApp.");
+  const quantities = input.items.map((item) => item.quantity);
+  for (const [index, product] of items.entries()) {
+    const problem = quantityProblem(
+      product.name,
+      quantities[index]!,
+      quantityLimits(product)
+    );
+    if (problem) return fail(problem);
+  }
 
   // Same form submitted twice: reuse the order created the first time.
   const existing = await db.query.orders.findFirst({
@@ -159,9 +169,9 @@ export async function startCheckout(
   }
 
   // The price is computed now, on the server; the browser only tells us what it showed.
-  const lines = items.map((product) => ({
+  const lines = items.map((product, index) => ({
     productId: product.id,
-    listPrice: product.priceAmount,
+    listPrice: product.priceAmount * quantities[index]!,
   }));
   let applied: AppliedCode | null = null;
   if (input.discountCode) {
@@ -220,6 +230,7 @@ export async function startCheckout(
             orderId: created.id,
             productId: product.id,
             productName: product.name,
+            quantity: quantities[index]!,
             listAmount: price.lines[index]!.listPrice,
             unitAmount: price.lines[index]!.finalPrice,
           }))
@@ -247,9 +258,14 @@ export async function startCheckout(
     payment = await gateway.createTransaction({
       orderCode: order.code,
       amount: order.amount,
+      // One line per product for its whole quantity: after a fixed code the
+      // line total does not always split into equal unit prices.
       items: items.map((product, index) => ({
         id: product.id,
-        name: product.name,
+        name:
+          quantities[index]! > 1
+            ? `${product.name} (x${quantities[index]})`
+            : product.name,
         price: price.lines[index]!.finalPrice,
       })),
       buyer: {
@@ -622,6 +638,8 @@ export async function loadOrderLines(db: Database, orderId: string) {
     slug: product.slug,
     coverUrl: product.coverUrl,
     deliveryType: product.deliveryType,
+    quantity: item.quantity,
+    /** Line totals (price × quantity), before and after the discount code. */
     listAmount: item.listAmount ?? item.unitAmount,
     unitAmount: item.unitAmount,
     delivery,

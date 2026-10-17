@@ -41,7 +41,7 @@ export function WhatsAppOrder({
       {discountEnabled ? (
         <div className="flex flex-col gap-2.5">
           <DiscountCodeField
-            productIds={[productId]}
+            items={[{ productId, quantity: 1 }]}
             applied={discount}
             onChange={setDiscount}
           />

@@ -3,6 +3,8 @@
 import {
   Alert02Icon,
   Cancel01Icon,
+  MinusSignIcon,
+  PlusSignIcon,
   SquareLock02Icon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
@@ -11,11 +13,12 @@ import {
   type ReactNode,
   startTransition,
   useActionState,
+  useEffect,
   useState,
   useTransition,
 } from "react";
 
-import { removeFromCartAction } from "@/app/_actions/cart";
+import { setCartQuantityAction } from "@/app/_actions/cart";
 import { PRODUCT_TYPE_ICONS } from "@/components/profile/blocks";
 import {
   type AppliedDiscount,
@@ -23,8 +26,10 @@ import {
 } from "@/components/profile/discount-code-field";
 import { Icon } from "@/components/profile/icon";
 import { MediaImage } from "@/components/profile/media-image";
+import { notify } from "@/components/profile/toaster";
 import type { ProductType } from "@/lib/domain";
 import { formatRupiah } from "@/lib/format";
+import { quantityProblem } from "@/lib/quantity";
 
 import { checkoutAction, type CheckoutState } from "./actions";
 
@@ -34,7 +39,13 @@ export type CheckoutItem = {
   href: string;
   coverUrl: string | null;
   productType: ProductType;
+  /** Price of one unit. */
   price: number;
+  /** The struck-through price of one unit, when the product is on sale. */
+  compareAt: number | null;
+  quantity: number;
+  min: number;
+  max: number;
 };
 
 function Field({
@@ -113,16 +124,79 @@ export function CheckoutForm({
   // A different list of products is a different order, not a double submit.
   const [orderKey, setOrderKey] = useState(idempotencyKey);
   const [removing, startRemoving] = useTransition();
+  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
+    Object.fromEntries(items.map((item) => [item.id, item.quantity]))
+  );
   const errors = state?.fieldErrors ?? {};
-  const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+  const quantityOf = (item: CheckoutItem) =>
+    quantities[item.id] ?? item.quantity;
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price * quantityOf(item),
+    0
+  );
   const total = discount?.finalPrice ?? subtotal;
 
-  function remove(id: string) {
-    startRemoving(async () => {
-      await removeFromCartAction(id);
+  // Problems the server found (price changed, product gone) also pop up.
+  useEffect(() => {
+    if (state?.error && !state.fieldErrors) notify("error", state.error);
+  }, [state]);
+
+  /** The order changed: a new submit key, and an applied code is checked again. */
+  function orderChanged() {
+    setOrderKey(crypto.randomUUID());
+    if (discount) {
       setDiscount(null);
-      setOrderKey(crypto.randomUUID());
+      notify(
+        "info",
+        `Kode ${discount.code} dilepas karena isi pesanan berubah. Pakai lagi untuk menghitung ulang.`
+      );
+    }
+  }
+
+  function changeQuantity(item: CheckoutItem, next: number) {
+    // Minus at one unit in the cart means "take it out" (with undo).
+    if (next === 0 && fromCart) {
+      remove(item);
+      return;
+    }
+    const problem = quantityProblem(item.name, next, item);
+    if (problem) {
+      notify("warning", problem);
+      return;
+    }
+    const previous = quantityOf(item);
+    setQuantities((current) => ({ ...current, [item.id]: next }));
+    orderChanged();
+    if (!fromCart) return;
+    startRemoving(async () => {
+      const result = await setCartQuantityAction(item.id, next);
+      if (!result.ok) {
+        notify(result.tone, result.message);
+        setQuantities((current) => ({ ...current, [item.id]: previous }));
+      }
+    });
+  }
+
+  function remove(item: CheckoutItem) {
+    const previous = quantityOf(item);
+    startRemoving(async () => {
+      const result = await setCartQuantityAction(item.id, 0);
+      if (!result.ok) {
+        notify(result.tone, result.message);
+        return;
+      }
+      orderChanged();
       router.refresh();
+      notify("info", `${item.name} dihapus dari keranjang.`, {
+        label: "Batalkan",
+        onClick: () =>
+          startRemoving(async () => {
+            const undo = await setCartQuantityAction(item.id, previous);
+            if (!undo.ok) notify(undo.tone, undo.message);
+            setQuantities((current) => ({ ...current, [item.id]: previous }));
+            router.refresh();
+          }),
+      });
     });
   }
 
@@ -140,7 +214,10 @@ export function CheckoutForm({
       className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6"
     >
       {items.map((item) => (
-        <input key={item.id} type="hidden" name="productId" value={item.id} />
+        <span key={item.id} hidden>
+          <input type="hidden" name="productId" value={item.id} />
+          <input type="hidden" name="quantity" value={quantityOf(item)} />
+        </span>
       ))}
       <input type="hidden" name="fromCart" value={fromCart ? "1" : "0"} />
       <input
@@ -158,7 +235,16 @@ export function CheckoutForm({
           </h2>
           <ul className="flex flex-col divide-y divide-p-line">
             {items.map((item) => {
+              const quantity = quantityOf(item);
+              const line = item.price * quantity;
               const off = discount?.lineDiscounts[item.id] ?? 0;
+              // Struck through: the price before the code, else the product's sale reference.
+              const struck =
+                off > 0
+                  ? line
+                  : item.compareAt && item.compareAt > item.price
+                    ? item.compareAt * quantity
+                    : null;
               return (
                 <li
                   key={item.id}
@@ -184,7 +270,7 @@ export function CheckoutForm({
                       />
                     </span>
                   )}
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-start sm:gap-4">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-4">
                     {/* Phones: name, price, link. Wider: name and link, price on the right. */}
                     <div className="contents sm:flex sm:min-w-0 sm:flex-1 sm:flex-col sm:gap-1">
                       <span className="line-clamp-2 text-[15px] leading-snug font-semibold">
@@ -199,20 +285,54 @@ export function CheckoutForm({
                     </div>
                     <div className="flex shrink-0 items-baseline gap-2 sm:flex-col sm:items-end sm:gap-1">
                       <span className="text-[15px] font-semibold tabular-nums">
-                        {formatRupiah(item.price - off)}
+                        {formatRupiah(line - off)}
                       </span>
-                      {off > 0 ? (
+                      {struck ? (
                         <span className="text-[13px] text-p-muted tabular-nums line-through">
-                          <span className="sr-only">Harga normal </span>
-                          {formatRupiah(item.price)}
+                          <span className="sr-only">Sebelumnya </span>
+                          {formatRupiah(struck)}
                         </span>
                       ) : null}
                     </div>
+                    {item.max > 1 ? (
+                      <div className="order-last mt-1 sm:order-none sm:basis-full">
+                        <div
+                          role="group"
+                          aria-label={`Jumlah ${item.name}`}
+                          className="flex w-fit items-center rounded-[var(--p-r-btn)] border border-p-line"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => changeQuantity(item, quantity - 1)}
+                            disabled={pending}
+                            aria-label="Kurangi"
+                            className="grid size-9 place-items-center text-p-fg disabled:opacity-50"
+                          >
+                            <Icon icon={MinusSignIcon} className="size-4" />
+                          </button>
+                          <span
+                            aria-live="polite"
+                            className="min-w-7 text-center text-[14px] font-semibold tabular-nums"
+                          >
+                            {quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => changeQuantity(item, quantity + 1)}
+                            disabled={pending}
+                            aria-label="Tambah"
+                            className="grid size-9 place-items-center text-p-fg disabled:opacity-50"
+                          >
+                            <Icon icon={PlusSignIcon} className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   {fromCart ? (
                     <button
                       type="button"
-                      onClick={() => remove(item.id)}
+                      onClick={() => remove(item)}
                       disabled={removing || pending}
                       aria-label={`Hapus ${item.name} dari keranjang`}
                       className="-mt-1 -mr-2 grid size-9 shrink-0 place-items-center rounded-full text-p-muted transition-colors hover:text-p-fg disabled:opacity-50"
@@ -325,7 +445,10 @@ export function CheckoutForm({
 
         {discountEnabled ? (
           <DiscountCodeField
-            productIds={items.map((item) => item.id)}
+            items={items.map((item) => ({
+              productId: item.id,
+              quantity: quantityOf(item),
+            }))}
             applied={discount}
             onChange={setDiscount}
           />

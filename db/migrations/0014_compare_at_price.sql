@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `compare_at_amount` integer;

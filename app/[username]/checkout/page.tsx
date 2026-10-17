@@ -41,19 +41,19 @@ export default async function CheckoutPage({
   const { profile, isOwner } = loaded;
   const buyNow = typeof beli === "string" ? parseCart(beli).slice(0, 1) : [];
   const fromCart = buyNow.length === 0;
-  const products = await cartProducts(
+  const lines = await cartProducts(
     profile.id,
     fromCart ? await readCart() : buyNow
   );
   // A "Beli sekarang" link for a product that is gone or not sold online.
-  if (!fromCart && products.length === 0) notFound();
+  if (!fromCart && lines.length === 0) notFound();
   const paymentsReady = paymentsStatus().ready;
-  const ids = products.map((product) => product.id);
+  const ids = lines.map((line) => line.product.id);
   const discountEnabled =
     paymentsReady && (await hasUsableCodes(getDb(), profile.id, ids));
   const backHref =
-    !fromCart && products[0]
-      ? `/${profile.username}/${products[0].slug}`
+    !fromCart && lines[0]
+      ? `/${profile.username}/${lines[0].product.slug}`
       : `/${profile.username}`;
 
   return (
@@ -77,7 +77,7 @@ export default async function CheckoutPage({
         id="konten"
         className="mx-auto w-full max-w-5xl px-4 py-5 lg:px-8 lg:py-8"
       >
-        {products.length === 0 ? (
+        {lines.length === 0 ? (
           <div className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center">
             <span className="grid size-14 place-items-center rounded-full bg-p-quiet text-p-muted">
               <Icon icon={ShoppingCart01Icon} className="size-6" />
@@ -95,19 +95,23 @@ export default async function CheckoutPage({
           </div>
         ) : paymentsReady ? (
           <CheckoutForm
-            items={products.map((product) => ({
+            items={lines.map(({ product, limits, quantity }) => ({
               id: product.id,
               name: product.name,
               href: `/${profile.username}/${product.slug}`,
               coverUrl: product.coverUrl,
               productType: product.productType,
               price: product.priceAmount,
+              compareAt: product.compareAtAmount,
+              quantity,
+              min: limits.min,
+              max: limits.max,
             }))}
             fromCart={fromCart}
             idempotencyKey={crypto.randomUUID()}
             discountEnabled={discountEnabled}
-            hasDelivery={products.some(
-              (product) => product.deliveryType !== "none"
+            hasDelivery={lines.some(
+              (line) => line.product.deliveryType !== "none"
             )}
           />
         ) : (
@@ -116,11 +120,11 @@ export default async function CheckoutPage({
           </p>
         )}
       </main>
-      {paymentsReady && products[0] && !isOwner ? (
+      {paymentsReady && lines[0] && !isOwner ? (
         <ViewBeacon
           type="checkout_started"
           profileId={profile.id}
-          productId={products[0].id}
+          productId={lines[0].product.id}
         />
       ) : null}
     </ProfileSurface>

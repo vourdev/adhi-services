@@ -31,7 +31,10 @@ export async function checkoutAction(
 ): Promise<CheckoutState> {
   const agreed = formData.get("agree") === "on";
   const parsed = checkoutInputSchema.safeParse({
-    productIds: formData.getAll("productId"),
+    items: formData.getAll("productId").map((productId, index) => ({
+      productId,
+      quantity: formData.getAll("quantity")[index],
+    })),
     idempotencyKey: formData.get("idempotencyKey"),
     expectedAmount: formData.get("expectedAmount"),
     discountCode: formData.get("discountCode") ?? "",
@@ -79,7 +82,10 @@ export async function checkoutAction(
   // Paid-for products leave the cart; anything else in it stays.
   if (formData.get("fromCart") === "1")
     await writeCart(
-      (await readCart()).filter((id) => !parsed.data.productIds.includes(id))
+      (await readCart()).filter(
+        (line) =>
+          !parsed.data.items.some((item) => item.productId === line.productId)
+      )
     );
   if (accessToken) {
     // A way back to the payment if the payment page gets closed.

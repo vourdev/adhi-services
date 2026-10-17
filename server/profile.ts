@@ -9,6 +9,7 @@ import {
   type Product,
 } from "@/db/schema";
 import { linkIconFor } from "@/lib/link-icon";
+import { quantityLimits } from "@/lib/quantity";
 import { lookFromProfile, type ProfileLook } from "@/lib/profile-look";
 import type {
   PublicBlock,
@@ -174,6 +175,12 @@ function toProductCard(product: Product): PublicProductCard {
     slug: product.slug,
     name: product.name,
     priceAmount: product.priceAmount,
+    // Only a higher earlier price is a sale.
+    compareAtAmount:
+      product.compareAtAmount !== null &&
+      product.compareAtAmount > product.priceAmount
+        ? product.compareAtAmount
+        : null,
     coverUrl: product.coverUrl,
     isFeatured: product.isFeatured,
     productType: product.productType,
@@ -190,6 +197,7 @@ export function toPublicProduct(product: Product): PublicProduct {
     seoDescription: product.seoDescription,
     status: product.status,
     hasDelivery: product.deliveryType !== "none",
+    limits: quantityLimits(product),
   };
 }
 

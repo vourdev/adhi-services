@@ -1,3 +1,4 @@
+import type { QuantityLimits } from "./quantity";
 import type {
   AccentValue,
   CheckoutMethod,
@@ -25,6 +26,8 @@ export type PublicProductCard = {
   name: string;
   /** Price in whole rupiah. Discount codes are applied at checkout, not here. */
   priceAmount: number;
+  /** The earlier price shown struck through; null when not on sale. */
+  compareAtAmount: number | null;
   coverUrl: string | null;
   isFeatured: boolean;
   productType: ProductType;
@@ -76,4 +79,6 @@ export type PublicProduct = PublicProductCard & {
   seoDescription: string | null;
   status: "draft" | "published";
   hasDelivery: boolean;
+  /** Units one order may buy (lib/quantity.ts). */
+  limits: QuantityLimits;
 };

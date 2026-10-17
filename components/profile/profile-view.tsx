@@ -11,6 +11,7 @@ import { HeadingBlock, LinkBlock, ProductBlock, ProductTile } from "./blocks";
 import { Icon } from "./icon";
 import { MediaImage } from "./media-image";
 import { ShareButton } from "./share-button";
+import { PublicToaster } from "./toaster";
 import { SOCIAL_ICONS } from "./social-icon";
 
 type ProductData = Extract<PublicBlock, { type: "product" }>;
@@ -244,6 +245,7 @@ export function ProfileSurface({
         </a>
       ) : null}
       {children}
+      {page ? <PublicToaster /> : null}
     </div>
   );
 }

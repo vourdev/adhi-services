@@ -166,7 +166,10 @@ export default async function OrderPage({
             <dt className="text-p-muted">Produk</dt>
             <dd className="flex flex-col items-end gap-1 text-right font-medium">
               {lines.map((line) => (
-                <span key={line.productId}>{line.name}</span>
+                <span key={line.productId}>
+                  {line.name}
+                  {line.quantity > 1 ? ` × ${line.quantity}` : ""}
+                </span>
               ))}
             </dd>
             {order.discountCode ? (

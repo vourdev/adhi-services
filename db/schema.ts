@@ -156,6 +156,12 @@ export const products = sqliteTable(
     coverUrl: text("cover_url"),
     /** Price in whole rupiah. IDR has no minor unit in Midtrans, so 1 = Rp1. */
     priceAmount: integer("price_amount").notNull(),
+    /**
+     * "Harga coret": the earlier, higher price shown struck through beside
+     * priceAmount. Display only; buyers always pay priceAmount (less any
+     * discount code). Null when the product is not on sale.
+     */
+    compareAtAmount: integer("compare_at_amount"),
     productType: text("product_type", { enum: PRODUCT_TYPES })
       .notNull()
       .default("digital"),
@@ -169,6 +175,10 @@ export const products = sqliteTable(
       .notNull()
       .default("whatsapp"),
     ctaLabel: text("cta_label"),
+    /** Fewest units one order may buy (checkout and cart). */
+    minQuantity: integer("min_quantity").notNull().default(1),
+    /** Most units one order may buy; null means up to MAX_LINE_QUANTITY. */
+    maxQuantity: integer("max_quantity"),
     /** Overrides the profile's WhatsApp number for this product. */
     whatsappNumber: text("whatsapp_number"),
     whatsappTemplate: text("whatsapp_template"),
@@ -332,9 +342,9 @@ export const orderItems = sqliteTable(
       .notNull()
       .references(() => products.id, { onDelete: "restrict" }),
     productName: text("product_name").notNull(),
-    /** Normal price at the time of the order. */
+    /** Normal price for the whole line (price × quantity) at the time of the order. */
     listAmount: integer("list_amount"),
-    /** Price actually charged (after any discount code). */
+    /** What was charged for the whole line, after any discount code. */
     unitAmount: integer("unit_amount").notNull(),
     quantity: integer("quantity").notNull().default(1),
   },

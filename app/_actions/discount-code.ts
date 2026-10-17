@@ -5,6 +5,8 @@ import * as z from "zod";
 
 import { getDb } from "@/db/client";
 import { products, profiles } from "@/db/schema";
+import { MAX_LINE_QUANTITY } from "@/lib/quantity";
+import { MAX_CART_ITEMS } from "@/lib/validation";
 import { checkDiscountCode } from "@/server/discount-codes";
 import { allowAttempt } from "@/server/rate-limit";
 import { clientKey } from "@/server/session";
@@ -23,7 +25,15 @@ export type CodePreview =
   | { ok: false; error: string };
 
 const inputSchema = z.object({
-  productIds: z.array(z.uuid()).min(1).max(20),
+  items: z
+    .array(
+      z.object({
+        productId: z.uuid(),
+        quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY),
+      })
+    )
+    .min(1)
+    .max(MAX_CART_ITEMS),
   code: z.string().trim().min(1, "Masukkan kode diskon.").max(64),
 });
 
@@ -33,10 +43,10 @@ const inputSchema = z.object({
  * Limited per visitor so short codes cannot be guessed by trying many.
  */
 export async function previewDiscountCodeAction(
-  productIds: unknown,
+  items: unknown,
   code: unknown
 ): Promise<CodePreview> {
-  const parsed = inputSchema.safeParse({ productIds, code });
+  const parsed = inputSchema.safeParse({ items, code });
   if (!parsed.success)
     return {
       ok: false,
@@ -60,7 +70,10 @@ export async function previewDiscountCodeAction(
     };
   }
 
-  const ids = [...new Set(parsed.data.productIds)];
+  const quantities = new Map(
+    parsed.data.items.map((item) => [item.productId, item.quantity])
+  );
+  const ids = [...quantities.keys()];
   const rows = await db
     .select({ product: products })
     .from(products)
@@ -85,7 +98,7 @@ export async function previewDiscountCodeAction(
     profileId,
     items: ids.map((id) => ({
       productId: id,
-      listPrice: byId.get(id)!.priceAmount,
+      listPrice: byId.get(id)!.priceAmount * quantities.get(id)!,
     })),
     code: parsed.data.code,
   });

@@ -4,6 +4,7 @@ import { Share08Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { type ReactNode, useState } from "react";
 
 import { Icon } from "./icon";
+import { notify } from "./toaster";
 
 /**
  * Opens the phone's share sheet for this page; copies the link where the
@@ -35,6 +36,7 @@ export function ShareButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      notify("success", "Link disalin. Tempel di chat atau media sosial.");
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       window.prompt("Salin link ini:", url);

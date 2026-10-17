@@ -186,19 +186,43 @@ export function LinkBlock({ block }: { block: LinkData }): ReactNode {
   );
 }
 
-/** Price in whole rupiah; Rp0 reads "Gratis". */
+/**
+ * Price in whole rupiah (Rp0 reads "Gratis"). With a higher earlier price,
+ * that one is struck through beside it with the percentage saved.
+ */
 export function PriceTag({
   amount,
+  compareAt = null,
   size = "md",
 }: {
   amount: number;
+  compareAt?: number | null;
   size?: "md" | "lg";
 }): ReactNode {
+  const onSale = compareAt !== null && compareAt > amount;
+  const large = size === "lg";
   return (
-    <span
-      className={`${size === "lg" ? "text-[1.75rem] leading-none" : "text-[15px]"} font-bold text-p-price tabular-nums`}
-    >
-      {amount === 0 ? "Gratis" : formatRupiah(amount)}
+    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <span
+        className={`${large ? "text-[1.75rem] leading-none" : "text-[15px]"} font-bold text-p-price tabular-nums`}
+      >
+        {amount === 0 ? "Gratis" : formatRupiah(amount)}
+      </span>
+      {onSale ? (
+        <>
+          <span
+            className={`${large ? "text-[15px]" : "text-[12.5px]"} text-p-muted tabular-nums line-through`}
+          >
+            <span className="sr-only">Harga sebelumnya </span>
+            {formatRupiah(compareAt)}
+          </span>
+          <span
+            className={`${large ? "text-[14px]" : "text-[12px]"} font-semibold text-p-sale tabular-nums`}
+          >
+            -{Math.round(((compareAt - amount) / compareAt) * 100)}%
+          </span>
+        </>
+      ) : null}
     </span>
   );
 }
@@ -249,7 +273,10 @@ export function ProductBlock({
         <span className="line-clamp-2 text-[15px] leading-snug font-semibold">
           {product.name}
         </span>
-        <PriceTag amount={product.priceAmount} />
+        <PriceTag
+          amount={product.priceAmount}
+          compareAt={product.compareAtAmount}
+        />
       </span>
       <TrailingArrow internal />
     </a>
@@ -275,7 +302,10 @@ export function ProductTile({
           {product.name}
         </span>
         <span className="mt-auto pt-1">
-          <PriceTag amount={product.priceAmount} />
+          <PriceTag
+            amount={product.priceAmount}
+            compareAt={product.compareAtAmount}
+          />
         </span>
       </span>
     </a>

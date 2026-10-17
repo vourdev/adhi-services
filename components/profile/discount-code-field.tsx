@@ -11,6 +11,7 @@ import { previewDiscountCodeAction } from "@/app/_actions/discount-code";
 import { formatRupiah } from "@/lib/format";
 
 import { Icon } from "./icon";
+import { notify } from "./toaster";
 
 export type AppliedDiscount = {
   code: string;
@@ -30,11 +31,12 @@ export type AppliedDiscount = {
  * WhatsApp order box), which is why this file has no "use client".
  */
 export function DiscountCodeField({
-  productIds,
+  items,
   applied,
   onChange,
 }: {
-  productIds: string[];
+  /** What is being bought; the code is checked against these. */
+  items: { productId: string; quantity: number }[];
   applied: AppliedDiscount | null;
   onChange: (applied: AppliedDiscount | null) => void;
 }): ReactNode {
@@ -51,12 +53,16 @@ export function DiscountCodeField({
       return;
     }
     startTransition(async () => {
-      const result = await previewDiscountCodeAction(productIds, code);
+      const result = await previewDiscountCodeAction(items, code);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       setError(null);
+      notify(
+        "success",
+        `Kode ${result.code} dipakai, hemat ${formatRupiah(result.discountAmount)}.`
+      );
       onChange({
         code: result.code,
         discountAmount: result.discountAmount,

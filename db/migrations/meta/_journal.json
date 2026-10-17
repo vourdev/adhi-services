@@ -92,6 +92,20 @@
       "when": 1792216516098,
       "tag": "0012_delivery_per_product",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792219410846,
+      "tag": "0013_product_quantity_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792219671322,
+      "tag": "0014_compare_at_price",
+      "breakpoints": true
     }
   ]
 }
